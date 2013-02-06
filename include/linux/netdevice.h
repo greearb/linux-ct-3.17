@@ -63,6 +63,7 @@ void netdev_set_default_ethtool_ops(struct net_device *dev,
 /* Backlog congestion levels */
 #define NET_RX_SUCCESS		0	/* keep 'em coming, baby */
 #define NET_RX_DROP		1	/* packet dropped */
+#define NET_RX_CONSUMED		2	/* pkt is consumed, stop rx logic here. */
 
 /*
  * Transmit return codes: transmit return codes originate from three different

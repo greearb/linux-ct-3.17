@@ -113,6 +113,15 @@ enum {
 #define TCP_TIMESTAMP		24
 #define TCP_NOTSENT_LOWAT	25	/* limit number of unsent bytes in write queue */
 
+
+/* Seems no chance of getting this upstream, so separate out the
+ * options so new upstream options do not collide.
+ */
+#define TCP_DELACK_SEGS         1023 /* Number of segments per delayed ack */
+#define TCP_DELACK_MIN          1024 /* minimum delayed ack, in miliseconds */
+#define TCP_DELACK_MAX          1025 /* maximum delayed ack, in miliseconds */
+
+
 struct tcp_repair_opt {
 	__u32	opt_code;
 	__u32	opt_val;

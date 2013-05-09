@@ -413,6 +413,7 @@ struct sock *tcp_create_openreq_child(struct sock *sk, struct request_sock *req,
 		const struct inet_request_sock *ireq = inet_rsk(req);
 		struct tcp_request_sock *treq = tcp_rsk(req);
 		struct inet_connection_sock *newicsk = inet_csk(newsk);
+		struct inet_connection_sock *oldicsk = inet_csk(sk);
 		struct tcp_sock *newtp = tcp_sk(newsk);
 
 		/* Now setup tcp_sock */
@@ -432,6 +433,9 @@ struct sock *tcp_create_openreq_child(struct sock *sk, struct request_sock *req,
 		newtp->srtt_us = 0;
 		newtp->mdev_us = jiffies_to_usecs(TCP_TIMEOUT_INIT);
 		newicsk->icsk_rto = TCP_TIMEOUT_INIT;
+		newicsk->icsk_ack.tcp_delack_min = oldicsk->icsk_ack.tcp_delack_min;
+		newicsk->icsk_ack.tcp_delack_max = oldicsk->icsk_ack.tcp_delack_max;
+		newicsk->icsk_ack.tcp_delack_segs = oldicsk->icsk_ack.tcp_delack_segs;
 
 		newtp->packets_out = 0;
 		newtp->retrans_out = 0;

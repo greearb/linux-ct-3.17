@@ -575,10 +575,11 @@ void dccp_send_ack(struct sock *sk)
 						GFP_ATOMIC);
 
 		if (skb == NULL) {
+			struct inet_connection_sock *icsk = inet_csk(sk);
 			inet_csk_schedule_ack(sk);
-			inet_csk(sk)->icsk_ack.ato = TCP_ATO_MIN;
+			icsk->icsk_ack.ato = TCP_ATO_MIN;
 			inet_csk_reset_xmit_timer(sk, ICSK_TIME_DACK,
-						  TCP_DELACK_MAX,
+						  icsk->icsk_ack.tcp_delack_max,
 						  DCCP_RTO_MAX);
 			return;
 		}

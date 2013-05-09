@@ -728,6 +728,27 @@ static struct ctl_table ipv4_table[] = {
 		.extra2		= &one,
 	},
 	{
+		.procname	= "tcp_default_delack_segs",
+		.data		= &sysctl_tcp_default_delack_segs,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec
+	},
+	{
+		.procname	= "tcp_default_delack_min",
+		.data		= &sysctl_tcp_default_delack_min,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_ms_jiffies
+	},
+	{
+		.procname	= "tcp_default_delack_max",
+		.data		= &sysctl_tcp_default_delack_max,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_ms_jiffies
+	},
+	{
 		.procname	= "udp_mem",
 		.data		= &sysctl_udp_mem,
 		.maxlen		= sizeof(sysctl_udp_mem),

@@ -406,6 +406,9 @@ void tcp_init_sock(struct sock *sk)
 	tp->reordering = sysctl_tcp_reordering;
 	tcp_enable_early_retrans(tp);
 	icsk->icsk_ca_ops = &tcp_init_congestion_ops;
+	icsk->icsk_ack.tcp_delack_min = sysctl_tcp_default_delack_min;
+	icsk->icsk_ack.tcp_delack_max = sysctl_tcp_default_delack_max;
+	icsk->icsk_ack.tcp_delack_segs = sysctl_tcp_default_delack_segs;
 
 	tp->tsoffset = 0;
 
@@ -1410,8 +1413,9 @@ void tcp_cleanup_rbuf(struct sock *sk, int copied)
 		   /* Delayed ACKs frequently hit locked sockets during bulk
 		    * receive. */
 		if (icsk->icsk_ack.blocked ||
-		    /* Once-per-two-segments ACK was not sent by tcp_input.c */
-		    tp->rcv_nxt - tp->rcv_wup > icsk->icsk_ack.rcv_mss ||
+		    /* More than once-per-tcp_delack_segs-segments ACK
+		     * was not sent by tcp_input.c */
+		    tp->rcv_nxt - tp->rcv_wup > inet_csk_delack_thresh(sk) ||
 		    /*
 		     * If this read emptied read buffer, we send ACK, if
 		     * connection is not bidirectional, user drained
@@ -2717,6 +2721,19 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
 		tp->notsent_lowat = val;
 		sk->sk_write_space(sk);
 		break;
+
+	case TCP_DELACK_SEGS:
+		icsk->icsk_ack.tcp_delack_segs = val;
+		break;
+
+	case TCP_DELACK_MIN:
+		icsk->icsk_ack.tcp_delack_min = msecs_to_jiffies(val);
+		break;
+
+	case TCP_DELACK_MAX:
+		icsk->icsk_ack.tcp_delack_max = msecs_to_jiffies(val);
+		break;
+
 	default:
 		err = -ENOPROTOOPT;
 		break;
@@ -2949,6 +2966,19 @@ static int do_tcp_getsockopt(struct sock *sk, int level,
 	case TCP_NOTSENT_LOWAT:
 		val = tp->notsent_lowat;
 		break;
+
+	case TCP_DELACK_SEGS:
+		val = icsk->icsk_ack.tcp_delack_segs;
+		break;
+
+	case TCP_DELACK_MIN:
+		val = jiffies_to_msecs(icsk->icsk_ack.tcp_delack_min);
+		break;
+
+	case TCP_DELACK_MAX:
+		val = jiffies_to_msecs(icsk->icsk_ack.tcp_delack_max);
+		break;
+
 	default:
 		return -ENOPROTOOPT;
 	}

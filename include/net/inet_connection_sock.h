@@ -115,6 +115,10 @@ struct inet_connection_sock {
 		__u32		  lrcvtime;	 /* timestamp of last received data packet */
 		__u16		  last_seg_size; /* Size of last incoming segment	   */
 		__u16		  rcv_mss;	 /* MSS used for delayed ACK decisions	   */ 
+		__u16		  tcp_delack_min; /* Minimum ack delay in ms               */
+		__u16		  tcp_delack_max; /* Minimum ack delay in ms               */
+		__u16		  tcp_delack_segs;/* Delay # of segs before sending ack    */
+		__u16		  UNUSED_HOLE;    /* Add new member(s) here                */
 	} icsk_ack;
 	struct {
 		int		  enabled;
@@ -174,11 +178,13 @@ static inline int inet_csk_ack_scheduled(const struct sock *sk)
 	return inet_csk(sk)->icsk_ack.pending & ICSK_ACK_SCHED;
 }
 
-static inline void inet_csk_delack_init(struct sock *sk)
+static inline u32 inet_csk_delack_thresh(const struct sock *sk)
 {
-	memset(&inet_csk(sk)->icsk_ack, 0, sizeof(inet_csk(sk)->icsk_ack));
+	struct inet_connection_sock *icsk = inet_csk(sk);
+	return icsk->icsk_ack.rcv_mss * icsk->icsk_ack.tcp_delack_segs;
 }
 
+void inet_csk_delack_init(struct sock *sk);
 void inet_csk_delete_keepalive_timer(struct sock *sk);
 void inet_csk_reset_keepalive_timer(struct sock *sk, unsigned long timeout);
 

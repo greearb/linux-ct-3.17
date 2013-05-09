@@ -71,6 +71,12 @@ EXPORT_SYMBOL(sysctl_tcp_notsent_lowat);
 static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
 			   int push_one, gfp_t gfp);
 
+int sysctl_tcp_default_delack_min __read_mostly = TCP_DELACK_MIN_DEFAULT;
+EXPORT_SYMBOL(sysctl_tcp_default_delack_min);
+
+int sysctl_tcp_default_delack_max __read_mostly = TCP_DELACK_MAX_DEFAULT;
+EXPORT_SYMBOL(sysctl_tcp_default_delack_max);
+
 /* Account for new data that has been sent to the network. */
 static void tcp_event_new_data_sent(struct sock *sk, const struct sk_buff *skb)
 {
@@ -3119,14 +3125,14 @@ void tcp_send_delayed_ack(struct sock *sk)
 	struct inet_connection_sock *icsk = inet_csk(sk);
 	int ato = icsk->icsk_ack.ato;
 	unsigned long timeout;
+	const struct tcp_sock *tp = tcp_sk(sk);
 
-	if (ato > TCP_DELACK_MIN) {
-		const struct tcp_sock *tp = tcp_sk(sk);
+	if (ato > icsk->icsk_ack.tcp_delack_min) {
 		int max_ato = HZ / 2;
 
 		if (icsk->icsk_ack.pingpong ||
 		    (icsk->icsk_ack.pending & ICSK_ACK_PUSHED))
-			max_ato = TCP_DELACK_MAX;
+			max_ato = icsk->icsk_ack.tcp_delack_max;
 
 		/* Slow path, intersegment interval is "high". */
 
@@ -3136,7 +3142,7 @@ void tcp_send_delayed_ack(struct sock *sk)
 		 */
 		if (tp->srtt_us) {
 			int rtt = max_t(int, usecs_to_jiffies(tp->srtt_us >> 3),
-					TCP_DELACK_MIN);
+					icsk->icsk_ack.tcp_delack_min);
 
 			if (rtt < max_ato)
 				max_ato = rtt;
@@ -3171,6 +3177,7 @@ void tcp_send_delayed_ack(struct sock *sk)
 void tcp_send_ack(struct sock *sk)
 {
 	struct sk_buff *buff;
+	struct inet_connection_sock *icsk = inet_csk(sk);
 
 	/* If we have been reset, we may not send again. */
 	if (sk->sk_state == TCP_CLOSE)
@@ -3183,9 +3190,10 @@ void tcp_send_ack(struct sock *sk)
 	buff = alloc_skb(MAX_TCP_HEADER, sk_gfp_atomic(sk, GFP_ATOMIC));
 	if (buff == NULL) {
 		inet_csk_schedule_ack(sk);
-		inet_csk(sk)->icsk_ack.ato = TCP_ATO_MIN;
+		icsk->icsk_ack.ato = TCP_ATO_MIN;
 		inet_csk_reset_xmit_timer(sk, ICSK_TIME_DACK,
-					  TCP_DELACK_MAX, TCP_RTO_MAX);
+					  icsk->icsk_ack.tcp_delack_max,
+					  TCP_RTO_MAX);
 		return;
 	}
 

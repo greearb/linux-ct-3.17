@@ -4719,6 +4719,11 @@ struct wmi_dbglog_cfg_cmd {
 /* By default disable power save for IBSS */
 #define ATH10K_DEFAULT_ATIM 0
 
+struct ath10k_fw_dbglog_report {
+	__le32 dropped_count;
+	__le32 messages[];
+} __packed;
+
 struct ath10k;
 struct ath10k_vif;
 

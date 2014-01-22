@@ -845,7 +845,9 @@ int ath10k_core_start(struct ath10k *ar, enum ath10k_firmware_mode mode)
 	if (status)
 		goto err_hif_stop;
 
-	if (test_bit(ATH10K_FW_FEATURE_WMI_10X, ar->fw_features))
+	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features))
+		ar->free_vdev_map = (1LL << TARGET_10X_NUM_VDEVS_CT) - 1;
+	else if (test_bit(ATH10K_FW_FEATURE_WMI_10X, ar->fw_features))
 		ar->free_vdev_map = (1LL << TARGET_10X_NUM_VDEVS) - 1;
 	else
 		ar->free_vdev_map = (1LL << TARGET_NUM_VDEVS) - 1;

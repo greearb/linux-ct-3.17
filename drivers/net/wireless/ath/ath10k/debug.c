@@ -371,6 +371,21 @@ void ath10k_debug_read_target_stats(struct ath10k *ar,
 	complete(&ar->debug.event_stats_compl);
 }
 
+int ath10k_refresh_peer_stats(struct ath10k *ar)
+{
+	int ret = ath10k_wmi_request_stats(ar, WMI_REQUEST_PEER_STAT);
+	if (ret) {
+		ath10k_warn(ar, "could not request stats (%d)\n", ret);
+		return ret;
+	}
+
+	ret = wait_for_completion_timeout(&ar->debug.event_stats_compl, 1*HZ);
+	if (ret <= 0)
+		return ret;
+
+	return 0;
+}
+
 static ssize_t ath10k_read_fw_stats(struct file *file, char __user *user_buf,
 				    size_t count, loff_t *ppos)
 {
@@ -379,7 +394,6 @@ static ssize_t ath10k_read_fw_stats(struct file *file, char __user *user_buf,
 	char *buf = NULL;
 	unsigned int len = 0, buf_len = 8000;
 	ssize_t ret_cnt = 0;
-	long left;
 	int i;
 	int ret;
 
@@ -394,14 +408,8 @@ static ssize_t ath10k_read_fw_stats(struct file *file, char __user *user_buf,
 	if (!buf)
 		goto exit;
 
-	ret = ath10k_wmi_request_stats(ar, WMI_REQUEST_PEER_STAT);
-	if (ret) {
-		ath10k_warn(ar, "could not request stats (%d)\n", ret);
-		goto exit;
-	}
-
-	left = wait_for_completion_timeout(&ar->debug.event_stats_compl, 1*HZ);
-	if (left <= 0)
+	ret = ath10k_refresh_peer_stats(ar);
+	if (ret)
 		goto exit;
 
 	spin_lock_bh(&ar->data_lock);

@@ -280,6 +280,60 @@ void ath10k_debug_read_target_stats(struct ath10k *ar,
 	num_vdev_stats = __le32_to_cpu(ev->num_vdev_stats); /* 0 or max vdevs */
 	num_peer_stats = __le32_to_cpu(ev->num_peer_stats); /* 0 or max peers */
 
+	if (__le32_to_cpu(ev->stats_id) == WMI_REQUEST_REGISTER_DUMP) {
+		struct ath10k_reg_dump* regdump = (struct ath10k_reg_dump*)(tmp);
+		for (i = 0; i < __le16_to_cpu(regdump->count); i++) {
+			switch (__le16_to_cpu(regdump->regpair[i].reg_id)) {
+			case REG_DUMP_NONE:
+				break;
+			case MAC_FILTER_ADDR_L32:
+				stats->mac_filter_addr_l32 = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case MAC_FILTER_ADDR_U16:
+				stats->mac_filter_addr_u16 = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case DCU_SLOT_TIME:
+				stats->dcu_slot_time = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case PHY_BB_MODE_SELECT:
+				stats->phy_bb_mode_select = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case PCU_BSSID_L32:
+				stats->pcu_bssid_l32 = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case PCU_BSSID_U16:
+				stats->pcu_bssid_u16 = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case PCU_BSSID2_L32:
+				stats->pcu_bssid_l32 = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case PCU_BSSID2_U16:
+				stats->pcu_bssid_u16 = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case PCU_STA_ADDR_U16:
+				stats->pcu_sta_addr_u16 = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case MAC_DMA_CFG:
+				stats->mac_dma_cfg = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case MAC_DMA_TXCFG:
+				stats->mac_dma_txcfg = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case SW_CHAINMASK:
+				stats->sw_chainmask_tx = (__le32_to_cpu(regdump->regpair[i].reg_val) >> 16);
+				stats->sw_chainmask_rx = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case SW_OPMODE:
+				stats->sw_opmode = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case SW_RXFILTER:
+				stats->sw_rxfilter = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			}/* switch */
+		}
+		goto done;
+	}
+
 	if (num_pdev_stats) {
 		ps = (struct wmi_pdev_stats_10x *)tmp;
 
@@ -388,15 +442,17 @@ void ath10k_debug_read_target_stats(struct ath10k *ar,
 		}
 	}
 
+done:
 	spin_unlock_bh(&ar->data_lock);
 	complete(&ar->debug.event_stats_compl);
 }
 
-int ath10k_refresh_peer_stats(struct ath10k *ar)
+int ath10k_refresh_peer_stats_t(struct ath10k *ar, int type)
 {
-	int ret = ath10k_wmi_request_stats(ar, WMI_REQUEST_PEER_STAT);
+	int ret = ath10k_wmi_request_stats(ar, type);
 	if (ret) {
-		ath10k_warn(ar, "could not request stats (%d)\n", ret);
+		ath10k_warn(ar, "could not request stats (type %d ret %d)\n",
+			    type, ret);
 		return ret;
 	}
 
@@ -406,6 +462,97 @@ int ath10k_refresh_peer_stats(struct ath10k *ar)
 
 	return 0;
 }
+
+int ath10k_refresh_peer_stats(struct ath10k *ar)
+{
+	return ath10k_refresh_peer_stats_t(ar, WMI_REQUEST_PEER_STAT);
+}
+
+int ath10k_refresh_target_regs(struct ath10k *ar)
+{
+	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT,
+		     ar->fw_features))
+		return ath10k_refresh_peer_stats_t(ar, WMI_REQUEST_REGISTER_DUMP);
+	return 0; /* fail silently if firmware does not support this option. */
+}
+
+
+static ssize_t ath10k_read_fw_regs(struct file *file, char __user *user_buf,
+				   size_t count, loff_t *ppos)
+{
+	struct ath10k *ar = file->private_data;
+	struct ath10k_target_stats *fw_regs;
+	char *buf = NULL;
+	unsigned int len = 0, buf_len = 8000;
+	ssize_t ret_cnt = 0;
+	int ret;
+
+	fw_regs = &ar->debug.target_stats;
+
+	mutex_lock(&ar->conf_mutex);
+
+	if (ar->state != ATH10K_STATE_ON)
+		goto exit;
+
+	buf = kzalloc(buf_len, GFP_KERNEL);
+	if (!buf)
+		goto exit;
+
+	ret = ath10k_refresh_target_regs(ar);
+	if (ret)
+		goto exit;
+
+	spin_lock_bh(&ar->data_lock);
+	len += scnprintf(buf + len, buf_len - len, "\n");
+	len += scnprintf(buf + len, buf_len - len, "%30s\n",
+			 "ath10k Target Register Dump");
+	len += scnprintf(buf + len, buf_len - len, "%30s\n\n",
+				 "=================");
+
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "MAC-FILTER-ADDR-L32", fw_regs->mac_filter_addr_l32);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "MAC-FILTER-ADDR-U16", fw_regs->mac_filter_addr_u16);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "DCU-SLOT-TIME", fw_regs->dcu_slot_time);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "PHY-MODE-SELECT", fw_regs->phy_bb_mode_select);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "PCU-BSSID-L32", fw_regs->pcu_bssid_l32);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "PCU-BSSID-U16", fw_regs->pcu_bssid_u16);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "PCU-BSSID2-L32", fw_regs->pcu_bssid2_l32);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "PCU-BSSID2-U16", fw_regs->pcu_bssid2_u16);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "PCU-STA-ADDR-U16", fw_regs->pcu_sta_addr_u16);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "MAC-DMA-CFG", fw_regs->mac_dma_cfg);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "MAC-DMA-TXCFG", fw_regs->mac_dma_txcfg);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "SW-CHAINMASK-TX", (u32)(fw_regs->sw_chainmask_tx));
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "SW-CHAINMASK-RX", (u32)(fw_regs->sw_chainmask_rx));
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "SW-OPMODE", fw_regs->sw_opmode);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "SW-RXFILTER", fw_regs->sw_rxfilter);
+
+	spin_unlock_bh(&ar->data_lock);
+
+	if (len > buf_len)
+		len = buf_len;
+
+	ret_cnt = simple_read_from_buffer(user_buf, count, ppos, buf, len);
+
+exit:
+	mutex_unlock(&ar->conf_mutex);
+	kfree(buf);
+	return ret_cnt;
+}
+
 
 static ssize_t ath10k_read_fw_stats(struct file *file, char __user *user_buf,
 				    size_t count, loff_t *ppos)
@@ -613,6 +760,13 @@ static int ath10k_debug_fw_assert(struct ath10k *ar)
 	return ath10k_wmi_cmd_send(ar, skb,
 				   ar->wmi.cmd->vdev_install_key_cmdid);
 }
+
+static const struct file_operations fops_fw_regs = {
+	.read = ath10k_read_fw_regs,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+	.llseek = default_llseek,
+};
 
 static ssize_t ath10k_read_simulate_fw_crash(struct file *file,
 					     char __user *user_buf,
@@ -1490,6 +1644,9 @@ int ath10k_debug_register(struct ath10k *ar)
 
 	debugfs_create_file("fw_stats", S_IRUSR, ar->debug.debugfs_phy, ar,
 			    &fops_fw_stats);
+
+	debugfs_create_file("fw_regs", S_IRUSR, ar->debug.debugfs_phy, ar,
+			    &fops_fw_regs);
 
 	debugfs_create_file("wmi_services", S_IRUSR, ar->debug.debugfs_phy, ar,
 			    &fops_wmi_services);

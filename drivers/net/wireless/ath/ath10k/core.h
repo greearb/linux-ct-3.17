@@ -198,9 +198,12 @@ struct ath10k_target_stats {
 	u32 pcu_bssid_u16;
 	u32 pcu_bssid2_l32;
 	u32 pcu_bssid2_u16;
+	u32 pcu_sta_addr_l32;
 	u32 pcu_sta_addr_u16;
 	u32 mac_dma_cfg;
 	u32 mac_dma_txcfg;
+	u32 pcu_rxfilter;
+	u32 sw_powermode;
 	u16 sw_chainmask_tx;
 	u16 sw_chainmask_rx;
 	u32 sw_opmode;

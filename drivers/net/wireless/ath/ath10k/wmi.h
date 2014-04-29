@@ -3137,6 +3137,9 @@ struct wal_dbg_stats {
 #define PCU_STA_ADDR_U16      9
 #define MAC_DMA_CFG          10
 #define MAC_DMA_TXCFG        11
+#define PCU_STA_ADDR_L32     12
+#define PCU_RXFILTER         13
+#define SW_POWERMODE         17
 #define SW_CHAINMASK         18 /* tx is high 16 bits, rx is low 16 bits */
 #define SW_OPMODE            19
 #define SW_RXFILTER          20

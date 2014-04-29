@@ -319,6 +319,15 @@ void ath10k_debug_read_target_stats(struct ath10k *ar,
 			case MAC_DMA_TXCFG:
 				stats->mac_dma_txcfg = __le32_to_cpu(regdump->regpair[i].reg_val);
 				break;
+			case PCU_STA_ADDR_L32:
+				stats->pcu_sta_addr_l32 = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case PCU_RXFILTER:
+				stats->pcu_rxfilter = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
+			case SW_POWERMODE:
+				stats->sw_powermode = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
 			case SW_CHAINMASK:
 				stats->sw_chainmask_tx = (__le32_to_cpu(regdump->regpair[i].reg_val) >> 16);
 				stats->sw_chainmask_rx = __le32_to_cpu(regdump->regpair[i].reg_val);
@@ -526,17 +535,25 @@ static ssize_t ath10k_read_fw_regs(struct file *file, char __user *user_buf,
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "PCU-BSSID2-U16", fw_regs->pcu_bssid2_u16);
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "PCU-STA-ADDR-L32", fw_regs->pcu_sta_addr_l32);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "PCU-STA-ADDR-U16", fw_regs->pcu_sta_addr_u16);
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "MAC-DMA-CFG", fw_regs->mac_dma_cfg);
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "MAC-DMA-TXCFG", fw_regs->mac_dma_txcfg);
+
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "SW-POWERMODE", fw_regs->sw_powermode);
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "SW-CHAINMASK-TX", (u32)(fw_regs->sw_chainmask_tx));
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "SW-CHAINMASK-RX", (u32)(fw_regs->sw_chainmask_rx));
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "SW-OPMODE", fw_regs->sw_opmode);
+
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "MAC-PCU-RXFILTER", fw_regs->pcu_rxfilter);
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "SW-RXFILTER", fw_regs->sw_rxfilter);
 

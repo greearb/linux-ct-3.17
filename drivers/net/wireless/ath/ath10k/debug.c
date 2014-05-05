@@ -325,6 +325,9 @@ void ath10k_debug_read_target_stats(struct ath10k *ar,
 			case PCU_RXFILTER:
 				stats->pcu_rxfilter = __le32_to_cpu(regdump->regpair[i].reg_val);
 				break;
+			case PHY_BB_GEN_CONTROLS:
+				stats->phy_bb_gen_controls = __le32_to_cpu(regdump->regpair[i].reg_val);
+				break;
 			case SW_POWERMODE:
 				stats->sw_powermode = __le32_to_cpu(regdump->regpair[i].reg_val);
 				break;
@@ -526,6 +529,8 @@ static ssize_t ath10k_read_fw_regs(struct file *file, char __user *user_buf,
 			 "DCU-SLOT-TIME", fw_regs->dcu_slot_time);
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "PHY-MODE-SELECT", fw_regs->phy_bb_mode_select);
+	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
+			 "PHY-BB-GEN-CONTROLS", fw_regs->phy_bb_gen_controls);
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",
 			 "PCU-BSSID-L32", fw_regs->pcu_bssid_l32);
 	len += scnprintf(buf + len, buf_len - len, "%30s 0x%08x\n",

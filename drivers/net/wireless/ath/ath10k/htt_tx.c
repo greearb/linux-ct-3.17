@@ -94,7 +94,9 @@ int ath10k_htt_tx_alloc(struct ath10k_htt *htt)
 	spin_lock_init(&htt->tx_lock);
 	init_waitqueue_head(&htt->empty_tx_wq);
 
-	if (test_bit(ATH10K_FW_FEATURE_WMI_10X, htt->ar->fw_features))
+	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, htt->ar->fw_features))
+		htt->max_num_pending_tx = TARGET_10X_NUM_MSDU_DESC_CT;
+	else if (test_bit(ATH10K_FW_FEATURE_WMI_10X, htt->ar->fw_features))
 		htt->max_num_pending_tx = TARGET_10X_NUM_MSDU_DESC;
 	else
 		htt->max_num_pending_tx = TARGET_NUM_MSDU_DESC;

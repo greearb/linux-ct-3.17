@@ -294,6 +294,7 @@ static void reset_regdomains(bool full_reset,
 			     const struct ieee80211_regdomain *new_regdom)
 {
 	const struct ieee80211_regdomain *r;
+	struct regulatory_request *lr;
 
 	ASSERT_RTNL();
 
@@ -306,6 +307,12 @@ static void reset_regdomains(bool full_reset,
 		cfg80211_world_regdom = NULL;
 	if (r == &world_regdom)
 		r = NULL;
+
+	lr = get_last_request();
+	if (lr && new_regdom) {
+		lr->alpha2[0] = new_regdom->alpha2[0];
+		lr->alpha2[1] = new_regdom->alpha2[1];
+	}
 
 	rcu_free_regdom(r);
 	rcu_free_regdom(cfg80211_world_regdom);

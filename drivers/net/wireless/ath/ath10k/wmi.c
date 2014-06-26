@@ -2285,7 +2285,7 @@ static void ath10k_wmi_10x_service_ready_event_rx(struct ath10k *ar,
 
 	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features)) {
 		my_num_peers = TARGET_10X_NUM_PEERS_CT;
-		my_num_vdevs = TARGET_10X_NUM_VDEVS_CT;
+		my_num_vdevs = ath10k_modparam_target_num_vdevs_ct;
 	}
 
 	if (skb->len < sizeof(*ev)) {
@@ -3119,7 +3119,7 @@ static int ath10k_wmi_10x_cmd_init(struct ath10k *ar)
 	config.rx_decap_mode = __cpu_to_le32(TARGET_10X_RX_DECAP_MODE);
 
 	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features)) {
-		config.num_vdevs = __cpu_to_le32(TARGET_10X_NUM_VDEVS_CT);
+		config.num_vdevs = __cpu_to_le32(ath10k_modparam_target_num_vdevs_ct);
 		config.num_peers = __cpu_to_le32(TARGET_10X_NUM_PEERS_CT);
 		skid_limit = TARGET_10X_AST_SKID_LIMIT_CT;
 		if (test_bit(ATH10K_FW_FEATURE_CT_RXSWCRYPT, ar->fw_features) &&

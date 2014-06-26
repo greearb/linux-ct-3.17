@@ -22,6 +22,7 @@
 #include "core.h"
 
 extern int ath10k_modparam_nohwcrypt;
+extern int ath10k_modparam_target_num_vdevs_ct;
 
 struct ath10k_generic_iter {
 	struct ath10k *ar;

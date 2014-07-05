@@ -3141,6 +3141,10 @@ static int ath10k_wmi_10x_cmd_init(struct ath10k *ar)
 		config.roam_offload_max_ap_profiles = 0; /* disable roaming */
 		config.num_peer_keys = __cpu_to_le32(TARGET_10X_NUM_PEER_KEYS_CT);
 		config.num_msdu_desc = __cpu_to_le32(TARGET_10X_NUM_MSDU_DESC_CT);
+		/* Disable beacon-miss logic, old code had it at 2 vdevs, which is not
+		 * nearly enough for us anyway..
+		 */
+		config.bmiss_offload_max_vdev = 0;
 	} else {
 		config.num_vdevs = __cpu_to_le32(TARGET_10X_NUM_VDEVS);
 		config.num_peers = __cpu_to_le32(TARGET_10X_NUM_PEERS);
@@ -3152,6 +3156,9 @@ static int ath10k_wmi_10x_cmd_init(struct ath10k *ar)
 			__cpu_to_le32(TARGET_10X_ROAM_OFFLOAD_MAX_AP_PROFILES);
 		config.num_peer_keys = __cpu_to_le32(TARGET_10X_NUM_PEER_KEYS);
 		config.num_msdu_desc = __cpu_to_le32(TARGET_10X_NUM_MSDU_DESC);
+		config.bmiss_offload_max_vdev =
+			__cpu_to_le32(TARGET_10X_BMISS_OFFLOAD_MAX_VDEV);
+
 	}
 	config.ast_skid_limit = __cpu_to_le32(skid_limit);
 
@@ -3168,9 +3175,6 @@ static int ath10k_wmi_10x_cmd_init(struct ath10k *ar)
 
 	config.scan_max_pending_reqs =
 		__cpu_to_le32(TARGET_10X_SCAN_MAX_PENDING_REQS);
-
-	config.bmiss_offload_max_vdev =
-		__cpu_to_le32(TARGET_10X_BMISS_OFFLOAD_MAX_VDEV);
 
 	config.num_mcast_groups = __cpu_to_le32(TARGET_10X_NUM_MCAST_GROUPS);
 	config.num_mcast_table_elems =

@@ -488,6 +488,9 @@ struct ath10k {
 	struct ath10k_htc htc;
 	struct ath10k_htt htt;
 
+	struct ieee80211_iface_limit ath10k_if_limits[3];
+	struct ieee80211_iface_combination ath10k_if_comb[1];
+
 	struct ath10k_hw_params {
 		u32 id;
 		const char *name;

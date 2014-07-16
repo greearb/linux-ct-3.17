@@ -4620,87 +4620,6 @@ void ath10k_mac_destroy(struct ath10k *ar)
 	ieee80211_free_hw(ar->hw);
 }
 
-static const struct ieee80211_iface_limit ath10k_if_limits[] = {
-	{
-	.max	= 8,
-	.types	= BIT(NL80211_IFTYPE_STATION)
-		| BIT(NL80211_IFTYPE_P2P_CLIENT)
-	},
-	{
-	.max	= 3,
-	.types	= BIT(NL80211_IFTYPE_P2P_GO)
-	},
-	{
-	.max	= 7,
-	.types	= BIT(NL80211_IFTYPE_AP)
-	},
-};
-
-static const struct ieee80211_iface_limit ath10k_10x_if_limits[] = {
-	{
-	.max	= 8,
-	.types	= BIT(NL80211_IFTYPE_AP)
-	},
-};
-
-static struct ieee80211_iface_limit ath10k_10x_ct_if_limits[] = {
-	{
-	.max	= DEF_TARGET_10X_NUM_VDEVS_CT,
-	.types	= BIT(NL80211_IFTYPE_STATION)
-		| BIT(NL80211_IFTYPE_P2P_CLIENT)
-	},
-	{
-	.max	= 3,
-	.types	= BIT(NL80211_IFTYPE_P2P_GO)
-	},
-	{
-	.max	= 7,
-	.types	= BIT(NL80211_IFTYPE_AP)
-	},
-};
-
-static struct ieee80211_iface_combination ath10k_if_comb[] = {
-	{
-		.limits = ath10k_if_limits,
-		.n_limits = ARRAY_SIZE(ath10k_if_limits),
-		.max_interfaces = 8,
-		.num_different_channels = 1,
-		.beacon_int_infra_match = true,
-	},
-};
-
-static struct ieee80211_iface_combination ath10k_10x_if_comb[] = {
-	{
-		.limits = ath10k_10x_if_limits,
-		.n_limits = ARRAY_SIZE(ath10k_10x_if_limits),
-		.max_interfaces = 8,
-		.num_different_channels = 1,
-		.beacon_int_infra_match = true,
-#ifdef CONFIG_ATH10K_DFS_CERTIFIED
-		.radar_detect_widths =	BIT(NL80211_CHAN_WIDTH_20_NOHT) |
-					BIT(NL80211_CHAN_WIDTH_20) |
-					BIT(NL80211_CHAN_WIDTH_40) |
-					BIT(NL80211_CHAN_WIDTH_80),
-#endif
-	},
-};
-
-static struct ieee80211_iface_combination ath10k_10x_ct_if_comb[] = {
-	{
-		.limits = ath10k_10x_ct_if_limits,
-		.n_limits = ARRAY_SIZE(ath10k_10x_ct_if_limits),
-		.max_interfaces = DEF_TARGET_10X_NUM_VDEVS_CT,
-		.num_different_channels = 1,
-		.beacon_int_infra_match = true,
-#ifdef CONFIG_ATH10K_DFS_CERTIFIED
-		.radar_detect_widths =	BIT(NL80211_CHAN_WIDTH_20_NOHT) |
-					BIT(NL80211_CHAN_WIDTH_20) |
-					BIT(NL80211_CHAN_WIDTH_40) |
-					BIT(NL80211_CHAN_WIDTH_80),
-#endif
-	},
-};
-
 static struct ieee80211_sta_vht_cap ath10k_create_vht_cap(struct ath10k *ar)
 {
 	struct ieee80211_sta_vht_cap vht_cap = {0};
@@ -4937,27 +4856,53 @@ int ath10k_mac_register(struct ath10k *ar)
 	 */
 	ar->hw->queues = 4;
 
+	/* Initialize limits to zero, then add default config. */
+	memset(&ar->ath10k_if_limits, 0, sizeof(ar->ath10k_if_limits));
+	memset(&ar->ath10k_if_comb, 0, sizeof(ar->ath10k_if_comb));
+
+	ar->ath10k_if_comb[0].limits = ar->ath10k_if_limits;
+	ar->ath10k_if_comb[0].n_limits = 3;
+	ar->ath10k_if_comb[0].num_different_channels = 1;
+	ar->ath10k_if_comb[0].beacon_int_infra_match = true;
+#ifdef CONFIG_ATH10K_DFS_CERTIFIED
+	ar->ath10k_if_comb[0].radar_detect_widths =
+		BIT(NL80211_CHAN_WIDTH_20_NOHT) |
+		BIT(NL80211_CHAN_WIDTH_20) |
+		BIT(NL80211_CHAN_WIDTH_40) |
+		BIT(NL80211_CHAN_WIDTH_80);
+#endif
+	ar->ath10k_if_comb[0].max_interfaces = 8;
+
+	ar->ath10k_if_comb[0].limits[0].types =
+		BIT(NL80211_IFTYPE_STATION)
+		| BIT(NL80211_IFTYPE_P2P_CLIENT);
+
+	ar->ath10k_if_comb[0].limits[1].types = BIT(NL80211_IFTYPE_P2P_GO);
+	ar->ath10k_if_comb[0].limits[1].max = 3;
+
+	ar->ath10k_if_comb[0].limits[2].types = BIT(NL80211_IFTYPE_AP);
+	ar->ath10k_if_comb[0].limits[2].max = 7;
+
+	/* Over-ride limits defaults based on the firmware type and/or
+	 * user-config.
+	 */
 	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features)) {
+		ar->ath10k_if_comb[0].max_interfaces =
+			ath10k_modparam_target_num_vdevs_ct;
 		/* Update limits to take modparm into account. */
-		ath10k_10x_ct_if_comb[0].limits[0].max =
+		ar->ath10k_if_comb[0].limits[0].max =
 			ath10k_modparam_target_num_vdevs_ct;
-		ath10k_10x_ct_if_comb[0].max_interfaces =
-			ath10k_modparam_target_num_vdevs_ct;
-
-		ar->hw->wiphy->iface_combinations = ath10k_10x_ct_if_comb;
-		ar->hw->wiphy->n_iface_combinations =
-			ARRAY_SIZE(ath10k_10x_ct_if_comb);
 	} else if (test_bit(ATH10K_FW_FEATURE_WMI_10X, ar->fw_features)) {
-		ar->hw->wiphy->iface_combinations = ath10k_10x_if_comb;
-		ar->hw->wiphy->n_iface_combinations =
-			ARRAY_SIZE(ath10k_10x_if_comb);
-	} else {
-		ar->hw->wiphy->iface_combinations = ath10k_if_comb;
-		ar->hw->wiphy->n_iface_combinations =
-			ARRAY_SIZE(ath10k_if_comb);
-
-		ar->hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_ADHOC);
+		ar->ath10k_if_comb[0].limits[2].max = 8;
 	}
+	else {
+		ar->hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_ADHOC);
+		ar->ath10k_if_comb[0].limits[2].max = 8;
+	}
+
+	ar->hw->wiphy->iface_combinations = ar->ath10k_if_comb;
+	ar->hw->wiphy->n_iface_combinations =
+		ARRAY_SIZE(ar->ath10k_if_comb);
 
 	ar->hw->netdev_features = NETIF_F_HW_CSUM;
 

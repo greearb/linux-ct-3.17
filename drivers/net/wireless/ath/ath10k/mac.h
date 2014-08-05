@@ -21,6 +21,8 @@
 #include <net/mac80211.h>
 #include "core.h"
 
+extern int ath10k_modparam_nohwcrypt;
+
 struct ath10k_generic_iter {
 	struct ath10k *ar;
 	int ret;

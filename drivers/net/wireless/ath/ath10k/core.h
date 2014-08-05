@@ -392,6 +392,11 @@ enum ath10k_fw_features {
 	/* Firmware from Candela Technologies, enables more VIFs, etc */
 	ATH10K_FW_FEATURE_WMI_10X_CT = 5,
 
+	/* Firmware from Candela Technologies with rx-software-crypt.
+	 * Required for multiple stations connected to same AP when using
+	 * encryption (ie, commercial version of CT firmware) */
+	ATH10K_FW_FEATURE_CT_RXSWCRYPT = 6,
+
 	/* keep last */
 	ATH10K_FW_FEATURE_COUNT,
 };
@@ -434,6 +439,7 @@ struct ath10k {
 	u32 chip_id;
 	u32 target_version;
 	u8 fw_version_major;
+	bool use_swcrypt; /* Firmware (and driver) supports rx-sw-crypt? */
 	u32 fw_version_minor;
 	u16 fw_version_release;
 	u16 fw_version_build;

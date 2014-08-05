@@ -19,6 +19,7 @@
 
 #include <net/mac80211.h>
 #include <linux/etherdevice.h>
+#include <linux/module.h>
 
 #include "hif.h"
 #include "core.h"
@@ -27,6 +28,13 @@
 #include "htt.h"
 #include "txrx.h"
 #include "testmode.h"
+
+/* 0:  Full hardware crypt
+ * 1:  Tx hardware crypt, but expect rx software crypt (use native wifi tx type)
+ */
+int ath10k_modparam_nohwcrypt;
+module_param_named(nohwcrypt, ath10k_modparam_nohwcrypt, int, 0444);
+MODULE_PARM_DESC(nohwcrypt, "Disable hardware rx decrypt feature");
 
 /**********/
 /* Crypto */

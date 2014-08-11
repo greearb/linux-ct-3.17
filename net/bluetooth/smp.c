@@ -46,6 +46,7 @@ enum {
 struct smp_chan {
 	struct l2cap_conn	*conn;
 	struct delayed_work	security_timer;
+	struct work_struct	distribute_work;
 
 	u8		preq[7]; /* SMP Pairing Request */
 	u8		prsp[7]; /* SMP Pairing Response */
@@ -659,11 +660,12 @@ static void smp_notify_keys(struct l2cap_conn *conn)
 	}
 }
 
-static int smp_distribute_keys(struct l2cap_conn *conn)
+static void smp_distribute_keys(struct work_struct *work)
 {
+	struct smp_chan *smp = container_of(work, struct smp_chan,
+					    distribute_work);
 	struct smp_cmd_pairing *req, *rsp;
-	struct l2cap_chan *chan = conn->smp;
-	struct smp_chan *smp = chan->data;
+	struct l2cap_conn *conn = smp->conn;
 	struct hci_conn *hcon = conn->hcon;
 	struct hci_dev *hdev = hcon->hdev;
 	__u8 *keydist;
@@ -671,13 +673,13 @@ static int smp_distribute_keys(struct l2cap_conn *conn)
 	BT_DBG("conn %p", conn);
 
 	if (!test_bit(HCI_CONN_LE_SMP_PEND, &hcon->flags))
-		return 0;
+		return;
 
 	rsp = (void *) &smp->prsp[1];
 
 	/* The responder sends its keys first */
 	if (hcon->out && (smp->remote_key_dist & 0x07))
-		return 0;
+		return;
 
 	req = (void *) &smp->preq[1];
 
@@ -763,15 +765,13 @@ static int smp_distribute_keys(struct l2cap_conn *conn)
 
 	/* If there are still keys to be received wait for them */
 	if ((smp->remote_key_dist & 0x07))
-		return 0;
+		return;
 
 	clear_bit(HCI_CONN_LE_SMP_PEND, &hcon->flags);
 	set_bit(SMP_FLAG_COMPLETE, &smp->flags);
 	smp_notify_keys(conn);
 
 	smp_chan_destroy(conn);
-
-	return 0;
 }
 
 static void smp_timeout(struct work_struct *work)
@@ -807,6 +807,7 @@ static struct smp_chan *smp_chan_create(struct l2cap_conn *conn)
 	smp->conn = conn;
 	chan->data = smp;
 
+	INIT_WORK(&smp->distribute_work, smp_distribute_keys);
 	INIT_DELAYED_WORK(&smp->security_timer, smp_timeout);
 
 	hci_conn_hold(conn->hcon);
@@ -826,6 +827,12 @@ void smp_chan_destroy(struct l2cap_conn *conn)
 	/* In case the timeout freed the SMP context */
 	if (!chan->data)
 		return;
+
+	if (work_pending(&smp->distribute_work)) {
+		cancel_work_sync(&smp->distribute_work);
+		if (!chan->data)
+			return;
+	}
 
 	complete = test_bit(SMP_FLAG_COMPLETE, &smp->flags);
 	mgmt_smp_complete(conn->hcon, complete);
@@ -1290,7 +1297,7 @@ static int smp_cmd_master_ident(struct l2cap_conn *conn, struct sk_buff *skb)
 			  rp->ediv, rp->rand);
 	smp->ltk = ltk;
 	if (!(smp->remote_key_dist & SMP_DIST_ID_KEY))
-		smp_distribute_keys(conn);
+		queue_work(hdev->workqueue, &smp->distribute_work);
 	hci_dev_unlock(hdev);
 
 	return 0;
@@ -1325,6 +1332,7 @@ static int smp_cmd_ident_addr_info(struct l2cap_conn *conn,
 	struct l2cap_chan *chan = conn->smp;
 	struct smp_chan *smp = chan->data;
 	struct hci_conn *hcon = conn->hcon;
+	struct hci_dev *hdev = hcon->hdev;
 	bdaddr_t rpa;
 
 	BT_DBG("");
@@ -1367,7 +1375,7 @@ static int smp_cmd_ident_addr_info(struct l2cap_conn *conn,
 				      smp->id_addr_type, smp->irk, &rpa);
 
 distribute:
-	smp_distribute_keys(conn);
+	queue_work(hdev->workqueue, &smp->distribute_work);
 
 	hci_dev_unlock(hcon->hdev);
 
@@ -1403,7 +1411,7 @@ static int smp_cmd_sign_info(struct l2cap_conn *conn, struct sk_buff *skb)
 		memcpy(csrk->val, rp->csrk, sizeof(csrk->val));
 	}
 	smp->csrk = csrk;
-	smp_distribute_keys(conn);
+	queue_work(hdev->workqueue, &smp->distribute_work);
 	hci_dev_unlock(hdev);
 
 	return 0;
@@ -1513,7 +1521,6 @@ done:
 static void smp_teardown_cb(struct l2cap_chan *chan, int err)
 {
 	struct l2cap_conn *conn = chan->conn;
-	struct smp_chan *smp = chan->data;
 
 	BT_DBG("chan %p", chan);
 
@@ -1529,14 +1536,17 @@ static void smp_resume_cb(struct l2cap_chan *chan)
 	struct smp_chan *smp = chan->data;
 	struct l2cap_conn *conn = chan->conn;
 	struct hci_conn *hcon = conn->hcon;
+	struct hci_dev *hdev = hcon->hdev;
 
 	BT_DBG("chan %p", chan);
 
-	if (test_bit(HCI_CONN_ENCRYPT, &hcon->flags))
-		smp_distribute_keys(conn);
+	if (!smp)
+		return;
 
-	if (smp)
-		cancel_delayed_work(&smp->security_timer);
+	cancel_delayed_work(&smp->security_timer);
+
+	if (test_bit(HCI_CONN_ENCRYPT, &hcon->flags))
+		queue_work(hdev->workqueue, &smp->distribute_work);
 }
 
 static void smp_ready_cb(struct l2cap_chan *chan)

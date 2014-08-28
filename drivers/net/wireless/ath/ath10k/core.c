@@ -382,6 +382,13 @@ err:
 	return ret;
 }
 
+struct ath10k_bss_rom_ie {
+	__le32 ram_addr;
+	__le32 ram_len;
+	__le32 rom_addr;
+	__le32 rom_len;
+} __packed;
+
 static int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name)
 {
 	size_t magic_len, len, ie_len;
@@ -389,6 +396,7 @@ static int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name)
 	struct ath10k_fw_ie *hdr;
 	const u8 *data;
 	__le32 *timestamp;
+	struct ath10k_bss_rom_ie *bss;
 
 	/* first fetch the firmware file (firmware-*.bin) */
 	ar->firmware = ath10k_fetch_fw_file(ar, ar->hw_params.fw.dir, name);
@@ -501,6 +509,39 @@ static int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name)
 
 			ar->otp_data = data;
 			ar->otp_len = ie_len;
+
+			break;
+		case ATH10K_FW_IE_BSS_INFO:
+			if (ie_len < sizeof(*bss)) {
+				ath10k_warn(ar, "invalid ie len for bss-info (%zd)\n",
+					    ie_len);
+				break;
+			}
+			bss = (struct ath10k_bss_rom_ie *)(data);
+
+			ar->fw.ram_bss_addr = le32_to_cpu(bss->ram_addr);
+			ar->fw.ram_bss_len = le32_to_cpu(bss->ram_len);
+			ath10k_dbg(ar, ATH10K_DBG_BOOT,
+				   "found RAM BSS addr 0x%x length %d\n",
+				   ar->fw.ram_bss_addr, ar->fw.ram_bss_len);
+
+			if (ar->fw.ram_bss_len > ATH10K_RAM_BSS_BUF_LEN) {
+				ath10k_warn(ar, "too long firmware RAM BSS length: %d\n",
+					    ar->fw.ram_bss_len);
+				ar->fw.ram_bss_len = 0;
+			}
+
+			ar->fw.rom_bss_addr = le32_to_cpu(bss->rom_addr);
+			ar->fw.rom_bss_len = le32_to_cpu(bss->rom_len);
+			ath10k_dbg(ar, ATH10K_DBG_BOOT,
+				   "found ROM BSS addr 0x%x length %d\n",
+				   ar->fw.rom_bss_addr, ar->fw.rom_bss_len);
+
+			if (ar->fw.rom_bss_len > ATH10K_ROM_BSS_BUF_LEN) {
+				ath10k_warn(ar, "too long firmware ROM BSS length: %d\n",
+					    ar->fw.rom_bss_len);
+				ar->fw.rom_bss_len = 0;
+			}
 
 			break;
 		default:

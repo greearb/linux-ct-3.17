@@ -2061,7 +2061,7 @@ static int ath10k_pci_hif_power_up(struct ath10k *ar)
 			    ret);
 
 		if (ath10k_pci_reset_mode == ATH10K_PCI_RESET_WARM_ONLY)
-			return ret;
+			goto out;
 
 		ath10k_warn(ar, "trying cold reset\n");
 
@@ -2069,11 +2069,17 @@ static int ath10k_pci_hif_power_up(struct ath10k *ar)
 		if (ret) {
 			ath10k_err(ar, "failed to power up target using cold reset too (%d)\n",
 				   ret);
-			return ret;
+			goto out;
 		}
 	}
 
-	return 0;
+out:
+	/* If we have failed to power-up, it may take a reboot to
+	 * get the NIC back online.
+	 * Set flag accordinly so that user-space can know.
+	 */
+	ar->fw_powerup_failed = !!ret;
+	return ret;
 }
 
 static void ath10k_pci_hif_power_down(struct ath10k *ar)

@@ -907,7 +907,6 @@ static int strn_len(const char __user * user_buffer, unsigned int maxlen)
 		case '\t':
 		case ' ':
 			goto done_str;
-			break;
 		default:
 			break;
 		}
@@ -4286,9 +4285,9 @@ static int pktgen_thread_worker(void *arg)
 
 	pr_debug("pktgen: starting pktgen/%d:  pid=%d\n", cpu, task_pid_nr(current));
 
-	set_current_state(TASK_INTERRUPTIBLE);
-
 	set_freezable();
+
+	__set_current_state(TASK_RUNNING);
 
 	while (!kthread_should_stop()) {
 		if (t->control & T_WAKE_BLOCKED) {
@@ -4314,8 +4313,6 @@ static int pktgen_thread_worker(void *arg)
 			schedule_timeout(HZ / 10);
 			finish_wait(&(t->queue), &wait);
 		}
-
-		__set_current_state(TASK_RUNNING);
 
 		if (pkt_dev) {
 			if (pkt_dev->tx_blocked) {
@@ -4385,9 +4382,9 @@ static int pktgen_thread_worker(void *arg)
 		}
 
 		try_to_freeze();
-
-		set_current_state(TASK_INTERRUPTIBLE);
 	}
+
+	set_current_state(TASK_INTERRUPTIBLE);
 
 	pr_debug("pktgen: %s stopping all device\n", t->tsk->comm);
 	pktgen_stop(t);

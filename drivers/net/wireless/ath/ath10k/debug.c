@@ -1037,6 +1037,149 @@ exit:
 	return ret;
 }
 
+#ifdef CONFIG_ATH10K_DEBUGFS
+/* TODO:  Would be nice to always support ethtool stats, would need to
+ * move the stats storage out of ath10k_debug, or always have ath10k_debug
+ * struct available..
+ */
+
+/* This generally cooresponds to the debugfs fw_stats file */
+static const char ath10k_gstrings_stats[][ETH_GSTRING_LEN] = {
+	"tx_pkts_nic",
+	"tx_bytes_nic",
+	"rx_pkts_nic",
+	"rx_bytes_nic",
+	"d_noise_floor",
+	"d_cycle_count",
+	"d_phy_error",
+	"d_rts_bad",
+	"d_rts_good",
+	"d_tx_power", /* in .5 dbM I think */
+	"d_rx_crc_err", /* fcs_bad */
+	"d_no_beacon",
+	"d_tx_mpdus_queued",
+	"d_tx_msdu_queued",
+	"d_tx_msdu_dropped",
+	"d_local_enqued",
+	"d_local_freed",
+	"d_tx_ppdu_hw_queued",
+	"d_tx_ppdu_reaped",
+	"d_tx_fifo_underrun",
+	"d_tx_ppdu_abort",
+	"d_tx_mpdu_requed",
+	"d_tx_excessive_retries",
+	"d_tx_hw_rate",
+	"d_tx_dropped_sw_retries",
+	"d_tx_illegal_rate",
+	"d_tx_continuous_xretries",
+	"d_tx_timeout",
+	"d_tx_mpdu_txop_limit",
+	"d_pdev_resets",
+	"d_rx_mid_ppdu_route_change",
+	"d_rx_status",
+	"d_rx_extra_frags_ring0",
+	"d_rx_extra_frags_ring1",
+	"d_rx_extra_frags_ring2",
+	"d_rx_extra_frags_ring3",
+	"d_rx_msdu_htt",
+	"d_rx_mpdu_htt",
+	"d_rx_msdu_stack",
+	"d_rx_mpdu_stack",
+	"d_rx_phy_err",
+	"d_rx_phy_err_drops",
+	"d_rx_mpdu_errors", /* FCS, MIC, ENC */
+	"d_fw_crash_count",
+	"d_fw_warm_reset_count",
+	"d_fw_cold_reset_count",
+};
+#define ATH10K_SSTATS_LEN ARRAY_SIZE(ath10k_gstrings_stats)
+
+void ath10k_get_et_strings(struct ieee80211_hw *hw,
+			   struct ieee80211_vif *vif,
+			   u32 sset, u8 *data)
+{
+	if (sset == ETH_SS_STATS)
+		memcpy(data, *ath10k_gstrings_stats,
+		       sizeof(ath10k_gstrings_stats));
+}
+
+int ath10k_get_et_sset_count(struct ieee80211_hw *hw,
+			     struct ieee80211_vif *vif, int sset)
+{
+	if (sset == ETH_SS_STATS)
+		return ATH10K_SSTATS_LEN;
+	return 0;
+}
+
+void ath10k_get_et_stats(struct ieee80211_hw *hw,
+			 struct ieee80211_vif *vif,
+			 struct ethtool_stats *stats, u64 *data)
+{
+	struct ath10k *ar = hw->priv;
+	int i = 0;
+	struct ath10k_target_stats *fw_stats;
+
+	fw_stats = &ar->debug.target_stats;
+
+	mutex_lock(&ar->conf_mutex);
+
+	if (ar->state == ATH10K_STATE_ON)
+		ath10k_refresh_peer_stats(ar);
+
+	data[i++] = fw_stats->hw_reaped; /* ppdu reaped */
+	data[i++] = 0; /* tx bytes */
+	data[i++] = fw_stats->htt_mpdus;
+	data[i++] = 0; /* rx bytes */
+	data[i++] = fw_stats->ch_noise_floor;
+	data[i++] = fw_stats->cycle_count;
+	data[i++] = fw_stats->phy_err_count;
+	data[i++] = fw_stats->rts_bad;
+	data[i++] = fw_stats->rts_good;
+	data[i++] = fw_stats->chan_tx_power;
+	data[i++] = fw_stats->fcs_bad;
+	data[i++] = fw_stats->no_beacons;
+	data[i++] = fw_stats->mpdu_enqued;
+	data[i++] = fw_stats->msdu_enqued;
+	data[i++] = fw_stats->wmm_drop;
+	data[i++] = fw_stats->local_enqued;
+	data[i++] = fw_stats->local_freed;
+	data[i++] = fw_stats->hw_queued;
+	data[i++] = fw_stats->hw_reaped;
+	data[i++] = fw_stats->underrun;
+	data[i++] = fw_stats->tx_abort;
+	data[i++] = fw_stats->mpdus_requed;
+	data[i++] = fw_stats->tx_ko;
+	data[i++] = fw_stats->data_rc;
+	data[i++] = fw_stats->sw_retry_failure;
+	data[i++] = fw_stats->illgl_rate_phy_err;
+	data[i++] = fw_stats->pdev_cont_xretry;
+	data[i++] = fw_stats->pdev_tx_timeout;
+	data[i++] = fw_stats->txop_ovf;
+	data[i++] = fw_stats->pdev_resets;
+	data[i++] = fw_stats->mid_ppdu_route_change;
+	data[i++] = fw_stats->status_rcvd;
+	data[i++] = fw_stats->r0_frags;
+	data[i++] = fw_stats->r1_frags;
+	data[i++] = fw_stats->r2_frags;
+	data[i++] = fw_stats->r3_frags;
+	data[i++] = fw_stats->htt_msdus;
+	data[i++] = fw_stats->htt_mpdus;
+	data[i++] = fw_stats->loc_msdus;
+	data[i++] = fw_stats->loc_mpdus;
+	data[i++] = fw_stats->phy_errs;
+	data[i++] = fw_stats->phy_err_drop;
+	data[i++] = fw_stats->mpdu_errs;
+	data[i++] = ar->fw_crash_counter;
+	data[i++] = ar->fw_warm_reset_counter;
+	data[i++] = ar->fw_cold_reset_counter;
+
+	mutex_unlock(&ar->conf_mutex);
+
+	WARN_ON(i != ATH10K_SSTATS_LEN);
+}
+
+#endif
+
 static const struct file_operations fops_fw_dbglog = {
 	.read = ath10k_read_fw_dbglog,
 	.write = ath10k_write_fw_dbglog,

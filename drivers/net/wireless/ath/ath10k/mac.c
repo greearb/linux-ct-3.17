@@ -4468,6 +4468,11 @@ static const struct ieee80211_ops ath10k_ops = {
 	.suspend			= ath10k_suspend,
 	.resume				= ath10k_resume,
 #endif
+#ifdef CONFIG_ATH10K_DEBUGFS
+	.get_et_sset_count  = ath10k_get_et_sset_count,
+	.get_et_stats       = ath10k_get_et_stats,
+	.get_et_strings     = ath10k_get_et_strings,
+#endif
 };
 
 #define RATETAB_ENT(_rate, _rateid, _flags) { \

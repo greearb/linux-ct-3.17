@@ -544,6 +544,10 @@ struct ath10k {
 
 	struct dfs_pattern_detector *dfs_detector;
 
+	u32 fw_crash_counter;
+	u32 fw_warm_reset_counter;
+	u32 fw_cold_reset_counter;
+
 #ifdef CONFIG_ATH10K_DEBUGFS
 	struct ath10k_debug debug;
 #endif

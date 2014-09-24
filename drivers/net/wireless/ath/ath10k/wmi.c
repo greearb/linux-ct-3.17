@@ -2332,7 +2332,7 @@ static void ath10k_wmi_10x_service_ready_event_rx(struct ath10k *ar,
 			ath10k_err(ar, "Do not ever do this unless you really know what you are doing!\n");
 			do_once = 0;
 		}
-		ar->ath_common.regulatory.current_rd = modparam_override_eeprom_regdomain;
+		ar->ath_common.regulatory.current_rd = modparam_override_eeprom_regdomain | COUNTRY_ERD_FLAG;
 	}
 
 	if (strlen(ar->hw->wiphy->fw_version) == 0) {

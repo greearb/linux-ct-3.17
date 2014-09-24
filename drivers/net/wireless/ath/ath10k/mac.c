@@ -2417,18 +2417,34 @@ void ath10k_halt(struct ath10k *ar)
 	spin_unlock_bh(&ar->data_lock);
 }
 
-static struct ieee80211_sta_vht_cap ath10k_create_vht_cap(struct ath10k *ar)
+static u32 get_nss_from_chainmask(u16 chain_mask)
+{
+	if ((chain_mask & 0x15) == 0x15)
+		return 4;
+	else if ((chain_mask & 0x7) == 0x7)
+		return 3;
+	else if ((chain_mask & 0x3) == 0x3)
+		return 2;
+	return 1;
+}
+
+static struct ieee80211_sta_vht_cap ath10k_create_vht_cap(struct ath10k *ar,
+							  bool use_cfg_chains)
 {
 	struct ieee80211_sta_vht_cap vht_cap = {0};
 	u16 mcs_map;
 	int i;
+	int nrf = ar->num_rf_chains;
+
+	if (use_cfg_chains && ar->cfg_tx_chainmask)
+		nrf = get_nss_from_chainmask(ar->cfg_tx_chainmask);
 
 	vht_cap.vht_supported = 1;
 	vht_cap.cap = ar->vht_cap_info;
 
 	mcs_map = 0;
 	for (i = 0; i < 8; i++) {
-		if (i < ar->num_rf_chains)
+		if (i < nrf)
 			mcs_map |= IEEE80211_VHT_MCS_SUPPORT_0_9 << (i*2);
 		else
 			mcs_map |= IEEE80211_VHT_MCS_NOT_SUPPORTED << (i*2);
@@ -2440,10 +2456,15 @@ static struct ieee80211_sta_vht_cap ath10k_create_vht_cap(struct ath10k *ar)
 	return vht_cap;
 }
 
-static struct ieee80211_sta_ht_cap ath10k_get_ht_cap(struct ath10k *ar)
+static struct ieee80211_sta_ht_cap ath10k_get_ht_cap(struct ath10k *ar,
+						     bool use_cfg_chains)
 {
 	int i;
 	struct ieee80211_sta_ht_cap ht_cap = {0};
+	int nrf = ar->num_rf_chains;
+
+	if (use_cfg_chains && ar->cfg_tx_chainmask)
+		nrf = get_nss_from_chainmask(ar->cfg_tx_chainmask);
 
 	if (!(ar->ht_cap_info & WMI_HT_CAP_ENABLED))
 		return ht_cap;
@@ -2495,7 +2516,7 @@ static struct ieee80211_sta_ht_cap ath10k_get_ht_cap(struct ath10k *ar)
 	if (ar->vht_cap_info & WMI_VHT_CAP_MAX_MPDU_LEN_MASK)
 		ht_cap.cap |= IEEE80211_HT_CAP_MAX_AMSDU;
 
-	for (i = 0; i < ar->num_rf_chains; i++)
+	for (i = 0; i < nrf; i++)
 		ht_cap.mcs.rx_mask[i] = 0xFF;
 
 	ht_cap.mcs.tx_params |= IEEE80211_HT_MCS_TX_DEFINED;
@@ -2525,11 +2546,24 @@ static int ath10k_get_antenna(struct ieee80211_hw *hw, u32 *tx_ant, u32 *rx_ant)
 static int __ath10k_set_antenna(struct ath10k *ar, u32 tx_ant, u32 rx_ant)
 {
 	int ret;
+	struct ieee80211_sta_vht_cap vht_cap;
+	struct ieee80211_sta_ht_cap ht_cap;
 
 	lockdep_assert_held(&ar->conf_mutex);
 
 	ar->cfg_tx_chainmask = tx_ant;
 	ar->cfg_rx_chainmask = rx_ant;
+
+	ht_cap = ath10k_get_ht_cap(ar, true);
+	vht_cap = ath10k_create_vht_cap(ar, true);
+
+	if (ar->phy_capability & WHAL_WLAN_11G_CAPABILITY)
+		ar->mac.sbands[IEEE80211_BAND_2GHZ].ht_cap = ht_cap;
+
+	if (ar->phy_capability & WHAL_WLAN_11A_CAPABILITY) {
+		ar->mac.sbands[IEEE80211_BAND_5GHZ].ht_cap = ht_cap;
+		ar->mac.sbands[IEEE80211_BAND_5GHZ].vht_cap = vht_cap;
+	}
 
 	if ((ar->state != ATH10K_STATE_ON) &&
 	    (ar->state != ATH10K_STATE_RESTARTED))
@@ -2851,17 +2885,6 @@ static int ath10k_config(struct ieee80211_hw *hw, u32 changed)
 
 	mutex_unlock(&ar->conf_mutex);
 	return ret;
-}
-
-static u32 get_nss_from_chainmask(u16 chain_mask)
-{
-	if ((chain_mask & 0x15) == 0x15)
-		return 4;
-	else if ((chain_mask & 0x7) == 0x7)
-		return 3;
-	else if ((chain_mask & 0x3) == 0x3)
-		return 2;
-	return 1;
 }
 
 /*
@@ -4780,8 +4803,8 @@ int ath10k_mac_register(struct ath10k *ar)
 
 	SET_IEEE80211_DEV(ar->hw, ar->dev);
 
-	ht_cap = ath10k_get_ht_cap(ar);
-	vht_cap = ath10k_create_vht_cap(ar);
+	ht_cap = ath10k_get_ht_cap(ar, false);
+	vht_cap = ath10k_create_vht_cap(ar, false);
 
 	if (ar->phy_capability & WHAL_WLAN_11G_CAPABILITY) {
 		channels = kmemdup(ath10k_2ghz_channels,

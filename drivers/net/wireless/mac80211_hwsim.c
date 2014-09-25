@@ -2018,7 +2018,7 @@ static struct ieee80211_ops mac80211_hwsim_mchan_ops;
 static int mac80211_hwsim_create_radio(int channels, const char *reg_alpha2,
 				       const struct ieee80211_regdomain *regd,
 				       bool reg_strict, bool p2p_device,
-				       bool use_chanctx)
+				       bool use_chanctx, char *hwname)
 {
 	int err;
 	u8 addr[ETH_ALEN];
@@ -2037,7 +2037,7 @@ static int mac80211_hwsim_create_radio(int channels, const char *reg_alpha2,
 
 	if (use_chanctx)
 		ops = &mac80211_hwsim_mchan_ops;
-	hw = ieee80211_alloc_hw(sizeof(*data), ops);
+	hw = ieee80211_alloc_hw_nm(sizeof(*data), ops, hwname);
 	if (!hw) {
 		printk(KERN_DEBUG "mac80211_hwsim: ieee80211_alloc_hw failed\n");
 		err = -ENOMEM;
@@ -2510,9 +2510,13 @@ static int hwsim_create_radio_nl(struct sk_buff *msg, struct genl_info *info)
 	bool reg_strict = info->attrs[HWSIM_ATTR_REG_STRICT_REG];
 	bool p2p_device = info->attrs[HWSIM_ATTR_SUPPORT_P2P_DEVICE];
 	bool use_chanctx;
+	char *hwname = NULL;
 
 	if (info->attrs[HWSIM_ATTR_CHANNELS])
 		chans = nla_get_u32(info->attrs[HWSIM_ATTR_CHANNELS]);
+
+	if (info->attrs[HWSIM_ATTR_RADIO_NAME])
+		hwname = nla_data(info->attrs[HWSIM_ATTR_RADIO_NAME]);
 
 	if (info->attrs[HWSIM_ATTR_USE_CHANCTX])
 		use_chanctx = true;
@@ -2531,7 +2535,7 @@ static int hwsim_create_radio_nl(struct sk_buff *msg, struct genl_info *info)
 	}
 
 	return mac80211_hwsim_create_radio(chans, alpha2, regd, reg_strict,
-					   p2p_device, use_chanctx);
+					   p2p_device, use_chanctx, hwname);
 }
 
 static int hwsim_destroy_radio_nl(struct sk_buff *msg, struct genl_info *info)
@@ -2763,7 +2767,7 @@ static int __init init_mac80211_hwsim(void)
 		err = mac80211_hwsim_create_radio(channels, reg_alpha2,
 						  regd, reg_strict,
 						  support_p2p_device,
-						  channels > 1);
+						  channels > 1, NULL);
 		if (err < 0)
 			goto out_free_radios;
 	}

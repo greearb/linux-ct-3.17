@@ -309,7 +309,8 @@ static void cfg80211_destroy_iface_wk(struct work_struct *work)
 
 /* exported functions */
 
-struct wiphy *wiphy_new(const struct cfg80211_ops *ops, int sizeof_priv)
+struct wiphy *wiphy_new_nm(const struct cfg80211_ops *ops, int sizeof_priv,
+			   const char* requested_name)
 {
 	static atomic_t wiphy_counter = ATOMIC_INIT(0);
 
@@ -336,6 +337,7 @@ struct wiphy *wiphy_new(const struct cfg80211_ops *ops, int sizeof_priv)
 	rdev->wiphy_idx = atomic_inc_return(&wiphy_counter);
 
 	if (unlikely(rdev->wiphy_idx < 0)) {
+		/* TOOD:  Fix this some day. */
 		/* ugh, wrapped! */
 		atomic_dec(&wiphy_counter);
 		kfree(rdev);
@@ -346,7 +348,45 @@ struct wiphy *wiphy_new(const struct cfg80211_ops *ops, int sizeof_priv)
 	rdev->wiphy_idx--;
 
 	/* give it a proper name */
-	dev_set_name(&rdev->wiphy.dev, PHY_NAME "%d", rdev->wiphy_idx);
+	if (requested_name && requested_name[0]) {
+		struct cfg80211_registered_device *rdev2;
+		int wiphy_idx, taken = -1, result, digits;
+
+		/* Code below is from cfg80211_dev_rename */
+		/* prohibit calling the thing phy%d when %d is not its number */
+		sscanf(requested_name, PHY_NAME "%d%n", &wiphy_idx, &taken);
+		if (taken == strlen(requested_name) &&
+		    wiphy_idx != rdev->wiphy_idx) {
+			/* count number of places needed to print wiphy_idx */
+			digits = 1;
+			while (wiphy_idx /= 10)
+				digits++;
+			/*
+			 * deny name if it is phy<idx> where <idx> is printed
+			 * without leading zeroes. taken == strlen(newname) here
+			 */
+			if (taken == strlen(PHY_NAME) + digits)
+				goto use_default_name;
+		}
+
+		rtnl_lock();
+		/* Ensure another device does not already have this name. */
+		list_for_each_entry(rdev2, &cfg80211_rdev_list, list)
+			if (strcmp(requested_name, dev_name(&rdev2->wiphy.dev))
+			    == 0) {
+				rtnl_unlock();
+				goto use_default_name;
+			}
+
+		result = dev_set_name(&rdev->wiphy.dev, requested_name);
+		rtnl_unlock();
+		if (result)
+			goto use_default_name;
+	}
+	else {
+use_default_name:
+		dev_set_name(&rdev->wiphy.dev, PHY_NAME "%d", rdev->wiphy_idx);
+	}
 
 	INIT_LIST_HEAD(&rdev->wdev_list);
 	INIT_LIST_HEAD(&rdev->beacon_registrations);
@@ -406,7 +446,7 @@ struct wiphy *wiphy_new(const struct cfg80211_ops *ops, int sizeof_priv)
 
 	return &rdev->wiphy;
 }
-EXPORT_SYMBOL(wiphy_new);
+EXPORT_SYMBOL(wiphy_new_nm);
 
 static int wiphy_verify_combinations(struct wiphy *wiphy)
 {

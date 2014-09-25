@@ -752,7 +752,7 @@ static void ath9k_set_hw_capab(struct ath_softc *sc, struct ieee80211_hw *hw)
 		printk(KERN_ERR "ath9k: Your card was not certified to operate in the domain you chose.\n");
 		printk(KERN_ERR "ath9k: This might result in a violation of your local regulatory rules.\n");
 		printk(KERN_ERR "ath9k: Do not ever do this unless you really know what you are doing!\n");
-		regulatory->current_rd = modparam_override_eeprom_regdomain;
+		regulatory->current_rd = modparam_override_eeprom_regdomain | COUNTRY_ERD_FLAG;
 	}
 
 	hw->flags = IEEE80211_HW_RX_INCLUDES_FCS |

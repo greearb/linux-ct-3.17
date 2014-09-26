@@ -2018,7 +2018,8 @@ static struct ieee80211_ops mac80211_hwsim_mchan_ops;
 static int mac80211_hwsim_create_radio(int channels, const char *reg_alpha2,
 				       const struct ieee80211_regdomain *regd,
 				       bool reg_strict, bool p2p_device,
-				       bool use_chanctx, char *hwname)
+				       bool use_chanctx, char *hwname,
+				       bool no_vdev)
 {
 	int err;
 	u8 addr[ETH_ALEN];
@@ -2222,6 +2223,9 @@ static int mac80211_hwsim_create_radio(int channels, const char *reg_alpha2,
 		/* give the regulatory workqueue a chance to run */
 		schedule_timeout_interruptible(1);
 	}
+
+	if (no_vdev)
+		hw->flags |= IEEE80211_HW_NO_AUTO_VDEV;
 
 	err = ieee80211_register_hw(hw);
 	if (err < 0) {
@@ -2510,10 +2514,14 @@ static int hwsim_create_radio_nl(struct sk_buff *msg, struct genl_info *info)
 	bool reg_strict = info->attrs[HWSIM_ATTR_REG_STRICT_REG];
 	bool p2p_device = info->attrs[HWSIM_ATTR_SUPPORT_P2P_DEVICE];
 	bool use_chanctx;
+	bool no_vdev = false;
 	char *hwname = NULL;
 
 	if (info->attrs[HWSIM_ATTR_CHANNELS])
 		chans = nla_get_u32(info->attrs[HWSIM_ATTR_CHANNELS]);
+
+	if (info->attrs[HWSIM_ATTR_NO_VDEV])
+		no_vdev = true;
 
 	if (info->attrs[HWSIM_ATTR_RADIO_NAME])
 		hwname = nla_data(info->attrs[HWSIM_ATTR_RADIO_NAME]);
@@ -2535,7 +2543,8 @@ static int hwsim_create_radio_nl(struct sk_buff *msg, struct genl_info *info)
 	}
 
 	return mac80211_hwsim_create_radio(chans, alpha2, regd, reg_strict,
-					   p2p_device, use_chanctx, hwname);
+					   p2p_device, use_chanctx, hwname,
+					   no_vdev);
 }
 
 static int hwsim_destroy_radio_nl(struct sk_buff *msg, struct genl_info *info)
@@ -2767,7 +2776,7 @@ static int __init init_mac80211_hwsim(void)
 		err = mac80211_hwsim_create_radio(channels, reg_alpha2,
 						  regd, reg_strict,
 						  support_p2p_device,
-						  channels > 1, NULL);
+						  channels > 1, NULL, false);
 		if (err < 0)
 			goto out_free_radios;
 	}

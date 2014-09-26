@@ -112,6 +112,7 @@ enum {
  *	command to force use of channel contexts even when only a
  *	single channel is supported
  * @HWSIM_ATTR_RADIO_NAME: Name of radio, e.g. phy666
+ * @HWSIM_ATTR_NO_VDEV:  Do not create vdev (wlanX) when creating radio.
  * @__HWSIM_ATTR_MAX: enum limit
  */
 
@@ -135,6 +136,7 @@ enum {
 	HWSIM_ATTR_USE_CHANCTX,
 	HWSIM_ATTR_DESTROY_RADIO_ON_CLOSE,
 	HWSIM_ATTR_RADIO_NAME,
+	HWSIM_ATTR_NO_VDEV,
 	__HWSIM_ATTR_MAX,
 };
 #define HWSIM_ATTR_MAX (__HWSIM_ATTR_MAX - 1)

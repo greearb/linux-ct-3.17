@@ -906,6 +906,9 @@ static void mac80211_hwsim_tx_frame_nl(struct ieee80211_hw *hw,
 	if (nla_put_u32(skb, HWSIM_ATTR_FLAGS, hwsim_flags))
 		goto nla_put_failure;
 
+	if (nla_put_u32(skb, HWSIM_ATTR_FREQ, data->channel->center_freq))
+		goto nla_put_failure;
+
 	/* We get the tx control (rate and retries) info*/
 
 	for (i = 0; i < IEEE80211_TX_MAX_RATES; i++) {
@@ -2423,6 +2426,7 @@ static int hwsim_cloned_frame_received_nl(struct sk_buff *skb_2,
 	int frame_data_len;
 	void *frame_data;
 	struct sk_buff *skb = NULL;
+	u32 freq;
 
 	if (info->snd_portid != wmediumd_portid) {
 		printk(KERN_DEBUG "mac80211-hwsim: port-id mismatch: %d %d\n",
@@ -2470,6 +2474,9 @@ static int hwsim_cloned_frame_received_nl(struct sk_buff *skb_2,
 
 	/* A frame is received from user space */
 	memset(&rx_status, 0, sizeof(rx_status));
+	/* TODO: Check ATTR_FREQ if it exists, and maybe throw away off-channel
+	 * packets?
+	 */
 	rx_status.freq = data2->channel->center_freq;
 	rx_status.band = data2->channel->band;
 	rx_status.rate_idx = nla_get_u32(info->attrs[HWSIM_ATTR_RX_RATE]);

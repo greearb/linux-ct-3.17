@@ -2019,7 +2019,7 @@ static int mac80211_hwsim_create_radio(int channels, const char *reg_alpha2,
 				       const struct ieee80211_regdomain *regd,
 				       bool reg_strict, bool p2p_device,
 				       bool use_chanctx, char *hwname,
-				       bool no_vdev)
+				       bool no_vif)
 {
 	int err;
 	u8 addr[ETH_ALEN];
@@ -2225,8 +2225,8 @@ static int mac80211_hwsim_create_radio(int channels, const char *reg_alpha2,
 		schedule_timeout_interruptible(1);
 	}
 
-	if (no_vdev)
-		hw->flags |= IEEE80211_HW_NO_AUTO_VDEV;
+	if (no_vif)
+		hw->flags |= IEEE80211_HW_NO_AUTO_VIF;
 
 	err = ieee80211_register_hw(hw);
 	if (err < 0) {
@@ -2424,14 +2424,19 @@ static int hwsim_cloned_frame_received_nl(struct sk_buff *skb_2,
 	void *frame_data;
 	struct sk_buff *skb = NULL;
 
-	if (info->snd_portid != wmediumd_portid)
+	if (info->snd_portid != wmediumd_portid) {
+		printk(KERN_DEBUG "mac80211-hwsim: port-id mismatch: %d %d\n",
+		       info->snd_portid, wmediumd_portid);
 		return -EINVAL;
+	}
 
 	if (!info->attrs[HWSIM_ATTR_ADDR_RECEIVER] ||
 	    !info->attrs[HWSIM_ATTR_FRAME] ||
 	    !info->attrs[HWSIM_ATTR_RX_RATE] ||
-	    !info->attrs[HWSIM_ATTR_SIGNAL])
+	    !info->attrs[HWSIM_ATTR_SIGNAL]) {
+		printk(KERN_DEBUG "mac80211-hwsim: missing needed attrs\n");
 		goto out;
+	}
 
 	dst = (void *)nla_data(info->attrs[HWSIM_ATTR_ADDR_RECEIVER]);
 	frame_data_len = nla_len(info->attrs[HWSIM_ATTR_FRAME]);
@@ -2449,13 +2454,19 @@ static int hwsim_cloned_frame_received_nl(struct sk_buff *skb_2,
 	memcpy(skb_put(skb, frame_data_len), frame_data, frame_data_len);
 
 	data2 = get_hwsim_data_ref_from_addr(dst);
-	if (!data2)
+	if (!data2) {
+		printk(KERN_DEBUG "mac80211-hwsim: cannot find data2, dst: %pM\n",
+		       dst);
 		goto out;
+	}
 
 	/* check if radio is configured properly */
 
-	if (data2->idle || !data2->started)
+	if (data2->idle || !data2->started) {
+		printk(KERN_DEBUG "mac80211-hwsim: idle: %d or not started: %d\n",
+		       data2->idle, data2->started);
 		goto out;
+	}
 
 	/* A frame is received from user space */
 	memset(&rx_status, 0, sizeof(rx_status));
@@ -2469,10 +2480,12 @@ static int hwsim_cloned_frame_received_nl(struct sk_buff *skb_2,
 	data2->rx_bytes += skb->len;
 	ieee80211_rx_irqsafe(data2->hw, skb);
 
+	printk(KERN_DEBUG "clone frame was OK.\n");
 	return 0;
 err:
 	printk(KERN_DEBUG "mac80211_hwsim: error occurred in %s\n", __func__);
 out:
+	printk(KERN_DEBUG "mac80211_hwsim: 'out' when receiving cloned frame.\n");
 	dev_kfree_skb(skb);
 	return -EINVAL;
 }
@@ -2515,14 +2528,14 @@ static int hwsim_create_radio_nl(struct sk_buff *msg, struct genl_info *info)
 	bool reg_strict = info->attrs[HWSIM_ATTR_REG_STRICT_REG];
 	bool p2p_device = info->attrs[HWSIM_ATTR_SUPPORT_P2P_DEVICE];
 	bool use_chanctx;
-	bool no_vdev = false;
+	bool no_vif = false;
 	char *hwname = NULL;
 
 	if (info->attrs[HWSIM_ATTR_CHANNELS])
 		chans = nla_get_u32(info->attrs[HWSIM_ATTR_CHANNELS]);
 
-	if (info->attrs[HWSIM_ATTR_NO_VDEV])
-		no_vdev = true;
+	if (info->attrs[HWSIM_ATTR_NO_VIF])
+		no_vif = true;
 
 	if (info->attrs[HWSIM_ATTR_RADIO_NAME])
 		hwname = nla_data(info->attrs[HWSIM_ATTR_RADIO_NAME]);
@@ -2545,7 +2558,7 @@ static int hwsim_create_radio_nl(struct sk_buff *msg, struct genl_info *info)
 
 	return mac80211_hwsim_create_radio(chans, alpha2, regd, reg_strict,
 					   p2p_device, use_chanctx, hwname,
-					   no_vdev);
+					   no_vif);
 }
 
 static int hwsim_destroy_radio_nl(struct sk_buff *msg, struct genl_info *info)

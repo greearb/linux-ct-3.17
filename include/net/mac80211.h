@@ -1576,8 +1576,8 @@ struct ieee80211_tx_control {
  *	a virtual monitor interface when monitor interfaces are the only
  *	active interfaces.
  *
- * @IEEE80211_HW_NO_AUTO_VDEV: The driver would like for no wlanX to
- *	be created.  It is expected user-space will create vdevs as
+ * @IEEE80211_HW_NO_AUTO_VIF: The driver would like for no wlanX to
+ *	be created.  It is expected user-space will create vifs as
  *      desired (and thus have them named as desired).
  *
  * @IEEE80211_HW_QUEUE_CONTROL: The driver wants to control per-interface
@@ -1626,7 +1626,7 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_SUPPORTS_DYNAMIC_PS		= 1<<12,
 	IEEE80211_HW_MFP_CAPABLE			= 1<<13,
 	IEEE80211_HW_WANT_MONITOR_VIF			= 1<<14,
-	IEEE80211_HW_NO_AUTO_VDEV			= 1<<15,
+	IEEE80211_HW_NO_AUTO_VIF			= 1<<15,
 	/* free slot */
 	IEEE80211_HW_SUPPORTS_UAPSD			= 1<<17,
 	IEEE80211_HW_REPORTS_TX_ACK_STATUS		= 1<<18,

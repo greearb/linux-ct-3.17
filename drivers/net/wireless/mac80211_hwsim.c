@@ -2426,7 +2426,6 @@ static int hwsim_cloned_frame_received_nl(struct sk_buff *skb_2,
 	int frame_data_len;
 	void *frame_data;
 	struct sk_buff *skb = NULL;
-	u32 freq;
 
 	if (info->snd_portid != wmediumd_portid) {
 		printk(KERN_DEBUG "mac80211-hwsim: port-id mismatch: %d %d\n",

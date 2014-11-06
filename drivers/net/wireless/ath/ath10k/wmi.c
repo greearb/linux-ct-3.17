@@ -3663,6 +3663,10 @@ ath10k_wmi_vdev_start_restart(struct ath10k *ar,
 	if (arg->channel.chan_radar)
 		ch_flags |= WMI_CHAN_FLAG_DFS;
 
+	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features))
+		/* Disable having firmware request on-channel reservation. */
+		ch_flags |= WMI_CHAN_FLAG_NO_RESERVE_CH;
+
 	cmd = (struct wmi_vdev_start_request_cmd *)skb->data;
 	cmd->vdev_id         = __cpu_to_le32(arg->vdev_id);
 	cmd->disable_hw_ack  = __cpu_to_le32(arg->disable_hw_ack);

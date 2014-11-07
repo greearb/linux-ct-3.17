@@ -3624,6 +3624,33 @@ int ath10k_wmi_vdev_delete(struct ath10k *ar, u32 vdev_id)
 	return ath10k_wmi_cmd_send(ar, skb, ar->wmi.cmd->vdev_delete_cmdid);
 }
 
+static bool ath10k_ok_skip_ch_reservation(struct ath10k *ar, u32 vdev_id)
+{
+	struct ath10k_vif *arvif;
+	bool rv = false;
+
+	if (! test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features))
+		return rv;
+
+	list_for_each_entry(arvif, &ar->arvifs, list) {
+		if (!arvif->is_up)
+			continue;
+
+		if (arvif->vdev_id == vdev_id) {
+			if (arvif->vdev_type != WMI_VDEV_TYPE_STA)
+				return false;
+			continue;
+		}
+
+		/* If there is another station up, then assume
+		 * requested station must use same channel.
+		 */
+		if (arvif->vdev_type == WMI_VDEV_TYPE_STA)
+			rv = true;
+	}
+	return rv;
+}
+
 static int
 ath10k_wmi_vdev_start_restart(struct ath10k *ar,
 			      const struct wmi_vdev_start_request_arg *arg,
@@ -3663,8 +3690,8 @@ ath10k_wmi_vdev_start_restart(struct ath10k *ar,
 	if (arg->channel.chan_radar)
 		ch_flags |= WMI_CHAN_FLAG_DFS;
 
-	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features))
-		/* Disable having firmware request on-channel reservation. */
+	if (ath10k_ok_skip_ch_reservation(ar, arg->vdev_id))
+		/* Disable having firmware request on-channel reservation */
 		ch_flags |= WMI_CHAN_FLAG_NO_RESERVE_CH;
 
 	cmd = (struct wmi_vdev_start_request_cmd *)skb->data;

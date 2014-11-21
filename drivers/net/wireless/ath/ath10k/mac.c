@@ -4951,6 +4951,7 @@ int ath10k_mac_register(struct ath10k *ar)
 		/* Update limits to take modparm into account. */
 		ar->ath10k_if_comb[0].limits[0].max =
 			ath10k_modparam_target_num_vdevs_ct;
+		ar->hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_ADHOC);
 	} else if (test_bit(ATH10K_FW_FEATURE_WMI_10X, ar->fw_features)) {
 		ar->ath10k_if_comb[0].limits[2].max = 8;
 	}

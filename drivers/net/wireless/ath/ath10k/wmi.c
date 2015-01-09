@@ -4364,6 +4364,38 @@ int ath10k_wmi_request_stats(struct ath10k *ar, enum wmi_stats_id stats_id)
 	return ath10k_wmi_cmd_send(ar, skb, ar->wmi.cmd->request_stats_cmdid);
 }
 
+#ifdef CONFIG_ATH10K_DEBUG
+/* CT firmware only:
+ * (re) start wmi keep-alive timer in firmware.  Once we start
+ * sending these, firmware will assert if it does not receive one
+ * after about 10 seconds.
+ */
+
+struct wmi_request_nop_cmd {
+	u32 nop_id; /* for debugging purposes */
+};
+
+int ath10k_wmi_request_nop(struct ath10k *ar)
+{
+	struct wmi_request_nop_cmd *cmd;
+	struct sk_buff *skb;
+
+	if (! test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features))
+		return 0;
+
+	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
+	if (!skb)
+		return -ENOMEM;
+
+	cmd = (struct wmi_request_nop_cmd *)skb->data;
+	cmd->nop_id = __cpu_to_le32(ar->debug.nop_id++);
+
+	ath10k_dbg(ar, ATH10K_DBG_WMI, "wmi request nop (id %d)\n",
+		   ar->debug.nop_id - 1);
+	return ath10k_wmi_cmd_send(ar, skb, WMI_NOP);
+}
+#endif
+
 int ath10k_wmi_force_fw_hang(struct ath10k *ar,
 			     enum wmi_force_fw_hang_type type, u32 delay_ms)
 {

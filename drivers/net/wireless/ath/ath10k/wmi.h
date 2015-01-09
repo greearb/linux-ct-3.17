@@ -898,6 +898,8 @@ enum wmi_10x_cmd_id {
 	WMI_10X_GPIO_CONFIG_CMDID,
 	WMI_10X_GPIO_OUTPUT_CMDID,
 
+	WMI_NOP = WMI_10X_END_CMDID - 100, /* CT only:  wmi transport keep-alive, basically */
+
 	WMI_10X_PDEV_UTF_CMDID = WMI_10X_END_CMDID - 1,
 };
 
@@ -4868,5 +4870,10 @@ int ath10k_wmi_force_fw_hang(struct ath10k *ar,
 			     enum wmi_force_fw_hang_type type, u32 delay_ms);
 int ath10k_wmi_mgmt_tx(struct ath10k *ar, struct sk_buff *skb);
 int ath10k_wmi_dbglog_cfg(struct ath10k *ar, u32 module_enable);
+
+#ifdef CONFIG_ATH10K_DEBUG
+/* CT Firmware only */
+int ath10k_wmi_request_nop(struct ath10k *ar);
+#endif
 
 #endif /* _WMI_H_ */

@@ -837,16 +837,16 @@ static void ath10k_pci_ce_send_done(struct ath10k_ce_pipe *ce_state)
 	void *transfer_context;
 	u32 ce_data;
 	unsigned int nbytes;
-	unsigned int transfer_id;
 
 	while (ath10k_ce_completed_send_next(ce_state, &transfer_context,
 					     &ce_data, &nbytes,
-					     &transfer_id) == 0) {
+					     &ce_state->last_ce_send_done_transfer_id) == 0) {
 		/* no need to call tx completion for NULL pointers */
 		if (transfer_context == NULL)
 			continue;
 
-		cb->tx_completion(ar, transfer_context, transfer_id);
+		cb->tx_completion(ar, transfer_context,
+				  ce_state->last_ce_send_done_transfer_id);
 	}
 }
 
@@ -861,11 +861,10 @@ static void ath10k_pci_ce_recv_data(struct ath10k_ce_pipe *ce_state)
 	void *transfer_context;
 	u32 ce_data;
 	unsigned int nbytes, max_nbytes;
-	unsigned int transfer_id;
 	unsigned int flags;
 
 	while (ath10k_ce_completed_recv_next(ce_state, &transfer_context,
-					     &ce_data, &nbytes, &transfer_id,
+					     &ce_data, &nbytes, &ce_state->last_rx_transfer_id,
 					     &flags) == 0) {
 		skb = transfer_context;
 		max_nbytes = skb->len + skb_tailroom(skb);
@@ -1180,6 +1179,8 @@ static void ath10k_pci_fw_crashed_dump(struct ath10k *ar)
 {
 	struct ath10k_fw_crash_data *crash_data;
 	char uuid[50];
+	struct ath10k_pci *pci;
+	int i;
 
 	spin_lock_bh(&ar->data_lock);
 
@@ -1204,6 +1205,19 @@ static void ath10k_pci_fw_crashed_dump(struct ath10k *ar)
 		crash_data->crashed_since_read = true;
 
 	spin_unlock_bh(&ar->data_lock);
+
+	/* Print out some info on the CE pipes */
+	pci = ath10k_pci_priv(ar);
+	for (i = 0; i<CE_COUNT_MAX; i++) {
+		ath10k_err(ar, "ce-pipe [%i] rx-id: %i  ce-send-done: %d tx-id: %d bmi-send-done: %d bmi-recv: %d\n",
+			   i,
+			   pci->ce_states[i].last_rx_transfer_id,
+			   pci->ce_states[i].last_ce_send_done_transfer_id,
+			   pci->ce_states[i].last_tx_transfer_id,
+			   pci->ce_states[i].last_bmi_send_done_transfer_id,
+			   pci->ce_states[i].last_bmi_recv_transfer_id);
+	}
+	ath10k_err(ar, "last htt-tx-id: %d\n", ar->htt.htt_transfer_id);
 
 	queue_work(ar->workqueue, &ar->restart_work);
 }
@@ -1577,10 +1591,10 @@ static void ath10k_pci_bmi_send_done(struct ath10k_ce_pipe *ce_state)
 	struct bmi_xfer *xfer;
 	u32 ce_data;
 	unsigned int nbytes;
-	unsigned int transfer_id;
 
 	if (ath10k_ce_completed_send_next(ce_state, (void **)&xfer, &ce_data,
-					  &nbytes, &transfer_id))
+					  &nbytes,
+					  &ce_state->last_bmi_send_done_transfer_id))
 		return;
 
 	xfer->tx_done = true;
@@ -1592,11 +1606,12 @@ static void ath10k_pci_bmi_recv_data(struct ath10k_ce_pipe *ce_state)
 	struct bmi_xfer *xfer;
 	u32 ce_data;
 	unsigned int nbytes;
-	unsigned int transfer_id;
 	unsigned int flags;
 
 	if (ath10k_ce_completed_recv_next(ce_state, (void **)&xfer, &ce_data,
-					  &nbytes, &transfer_id, &flags))
+					  &nbytes,
+					  &ce_state->last_bmi_recv_transfer_id,
+					  &flags))
 		return;
 
 	if (!xfer->wait_for_resp) {

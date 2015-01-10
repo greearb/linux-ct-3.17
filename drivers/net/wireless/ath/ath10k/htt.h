@@ -1218,6 +1218,7 @@ struct ath10k_htt {
 	int max_throughput_mbps;
 	u8 target_version_major;
 	u8 target_version_minor;
+	u16 htt_transfer_id;
 	struct completion target_version_received;
 
 	struct {

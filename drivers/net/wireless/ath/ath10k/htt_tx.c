@@ -457,7 +457,6 @@ int ath10k_htt_tx(struct ath10k_htt *htt, struct sk_buff *msdu)
 	dma_addr_t paddr;
 	u32 frags_paddr;
 	bool use_frags;
-	unsigned int htt_transfer_id;
 
 	res = ath10k_htt_tx_inc_pending(htt);
 	if (res)
@@ -471,7 +470,6 @@ int ath10k_htt_tx(struct ath10k_htt *htt, struct sk_buff *msdu)
 	}
 	msdu_id = res;
 	htt->pending_tx[msdu_id] = msdu;
-	htt_transfer_id = htt->htt_transfer_id++;
 	spin_unlock_bh(&htt->tx_lock);
 
 	prefetch_len = min(htt->prefetch_len, msdu->len);
@@ -568,7 +566,7 @@ int ath10k_htt_tx(struct ath10k_htt *htt, struct sk_buff *msdu)
 	ath10k_dbg_dump(ar, ATH10K_DBG_HTT_DUMP, NULL, "htt tx msdu: ",
 			msdu->data, msdu->len);
 
-	sg_items[0].transfer_id = htt_transfer_id;
+	sg_items[0].transfer_id = 0;
 	sg_items[0].transfer_context = NULL;
 	sg_items[0].vaddr = &skb_cb->htt.txbuf->htc_hdr;
 	sg_items[0].paddr = skb_cb->htt.txbuf_paddr +
@@ -577,7 +575,7 @@ int ath10k_htt_tx(struct ath10k_htt *htt, struct sk_buff *msdu)
 			  sizeof(skb_cb->htt.txbuf->cmd_hdr) +
 			  sizeof(skb_cb->htt.txbuf->cmd_tx);
 
-	sg_items[1].transfer_id = sg_items[0].transfer_id;
+	sg_items[1].transfer_id = 0;
 	sg_items[1].transfer_context = NULL;
 	sg_items[1].vaddr = msdu->data;
 	sg_items[1].paddr = skb_cb->paddr;

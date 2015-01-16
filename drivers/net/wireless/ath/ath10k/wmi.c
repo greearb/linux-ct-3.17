@@ -3018,6 +3018,11 @@ int ath10k_wmi_pdev_set_param(struct ath10k *ar, u32 id, u32 value)
 	struct wmi_pdev_set_param_cmd *cmd;
 	struct sk_buff *skb;
 
+	if (!ath10k_can_send_fw_msg(ar)) {
+		/* Firmware is being restarted, cannot set */
+		return 0;
+	}
+
 	if (id == WMI_PDEV_PARAM_UNSUPPORTED) {
 		ath10k_warn(ar, "pdev param %d not supported by firmware\n",
 			    id);
@@ -3631,6 +3636,11 @@ int ath10k_wmi_vdev_delete(struct ath10k *ar, u32 vdev_id)
 	struct wmi_vdev_delete_cmd *cmd;
 	struct sk_buff *skb;
 
+	if (!ath10k_can_send_fw_msg(ar)) {
+		/* vdev is already gone, firmware is being restarted */
+		return 0;
+	}
+
 	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
 	if (!skb)
 		return -ENOMEM;
@@ -3828,6 +3838,11 @@ int ath10k_wmi_vdev_set_param(struct ath10k *ar, u32 vdev_id,
 	struct wmi_vdev_set_param_cmd *cmd;
 	struct sk_buff *skb;
 
+	if (!ath10k_can_send_fw_msg(ar)) {
+		/* Firmware is being restarted, cannot set vdev param */
+		return -EBUSY;
+	}
+
 	if (param_id == WMI_VDEV_PARAM_UNSUPPORTED) {
 		ath10k_dbg(ar, ATH10K_DBG_WMI,
 			   "vdev param %d not supported by firmware\n",
@@ -3968,6 +3983,11 @@ int ath10k_wmi_peer_delete(struct ath10k *ar, u32 vdev_id,
 {
 	struct wmi_peer_delete_cmd *cmd;
 	struct sk_buff *skb;
+
+	if (!ath10k_can_send_fw_msg(ar)) {
+		/* peer is already gone, firmware is being restarted */
+		return 0;
+	}
 
 	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
 	if (!skb)

@@ -1672,12 +1672,23 @@ static int ath10k_station_disassoc(struct ath10k *ar, struct ath10k_vif *arvif,
 
 	if (!sta->wme) {
 		arvif->num_legacy_stations--;
+
+		if (!ath10k_can_send_fw_msg(ar)) {
+			/* Firmware is being restarted, already disassoc */
+			return 0;
+		}
+
 		ret = ath10k_recalc_rtscts_prot(arvif);
 		if (ret) {
 			ath10k_warn(ar, "failed to recalculate rts/cts prot for vdev %d: %d\n",
 				    arvif->vdev_id, ret);
 			return ret;
 		}
+	}
+
+	if (!ath10k_can_send_fw_msg(ar)) {
+		/* Firmware is being restarted, already disassoc */
+		return 0;
 	}
 
 	ret = ath10k_clear_peer_keys(arvif, sta->addr);
@@ -2016,10 +2027,15 @@ static void ath10k_tx_h_add_p2p_noa_ie(struct ath10k *ar,
 	}
 }
 
-static void ath10k_tx_htt(struct ath10k *ar, struct sk_buff *skb)
+static int ath10k_tx_htt(struct ath10k *ar, struct sk_buff *skb)
 {
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
 	int ret = 0;
+
+	if (!ath10k_can_send_fw_msg(ar)) {
+		ret = -EBUSY;
+		goto exit;
+	}
 
 	if (ar->htt.target_version_major >= 3) {
 		/* Since HTT 3.0 there is no separate mgmt tx command */
@@ -2060,6 +2076,7 @@ exit:
 			    ret);
 		ieee80211_free_txskb(ar->hw, skb);
 	}
+	return ret;
 }
 
 void ath10k_offchan_tx_purge(struct ath10k *ar)
@@ -2127,14 +2144,17 @@ void ath10k_offchan_tx_work(struct work_struct *work)
 		ar->offchan_tx_skb = skb;
 		spin_unlock_bh(&ar->data_lock);
 
-		ath10k_tx_htt(ar, skb);
+		if ((ret = ath10k_tx_htt(ar, skb)) != 0) {
+			ath10k_warn(ar, "cannot send off-channel request packet: %d\n", ret);
+			goto after_wait;
+		}
 
 		ret = wait_for_completion_timeout(&ar->offchan_tx_completed,
 						  3 * HZ);
 		if (ret <= 0)
 			ath10k_warn(ar, "timed out waiting for offchannel skb %p\n",
 				    skb);
-
+	after_wait:
 		if (!peer) {
 			ret = ath10k_peer_delete(ar, vdev_id, peer_addr);
 			if (ret)
@@ -4016,7 +4036,7 @@ static void ath10k_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 
 	mutex_lock(&ar->conf_mutex);
 
-	if (ar->state == ATH10K_STATE_WEDGED)
+	if (!ath10k_can_send_fw_msg(ar))
 		goto skip;
 
 	/* If we are CT firmware, ask it to flush all tids on all peers on
@@ -4032,14 +4052,14 @@ static void ath10k_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			empty = (ar->htt.num_pending_tx == 0);
 			spin_unlock_bh(&ar->htt.tx_lock);
 
-			skip = (ar->state == ATH10K_STATE_WEDGED);
+			skip = (!ath10k_can_send_fw_msg(ar));
 
 			(empty || skip);
 		}), ATH10K_FLUSH_TIMEOUT_HZ);
 
 	if (ret <= 0 || skip)
-		ath10k_warn(ar, "failed to flush transmit queue (skip %i ar-state %i): %i\n",
-			    skip, ar->state, ret);
+		ath10k_warn(ar, "failed to flush transmit queue (skip %i ar-state %i crashed-since-start: %d): %i\n",
+			    skip, ar->state, (int)(ar->fw_crashed_since_start), ret);
 
 skip:
 	mutex_unlock(&ar->conf_mutex);

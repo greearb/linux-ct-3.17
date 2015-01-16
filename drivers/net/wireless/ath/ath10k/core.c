@@ -797,12 +797,22 @@ static int ath10k_init_hw_params(struct ath10k *ar)
 	return 0;
 }
 
+/* Can we send normal wmi and htt packets? */
+bool ath10k_can_send_fw_msg(struct ath10k *ar)
+{
+	if (ar->fw_crashed_since_start || ar->state == ATH10K_STATE_WEDGED
+	    || ar->state == ATH10K_STATE_RESTARTING)
+		return false;
+	return true;
+}
+
 static void ath10k_core_restart(struct work_struct *work)
 {
 	struct ath10k *ar = container_of(work, struct ath10k, restart_work);
 
 	mutex_lock(&ar->conf_mutex);
 
+	ar->fw_crashed_since_start = false;
 	switch (ar->state) {
 	case ATH10K_STATE_ON:
 		ar->state = ATH10K_STATE_RESTARTING;

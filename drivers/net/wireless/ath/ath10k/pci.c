@@ -1184,6 +1184,7 @@ static void ath10k_pci_fw_crashed_dump(struct ath10k *ar)
 	spin_lock_bh(&ar->data_lock);
 
 	ar->fw_crash_counter++;
+	ar->fw_crashed_since_start = true;
 
 	crash_data = ath10k_debug_get_new_fw_crash_data(ar);
 

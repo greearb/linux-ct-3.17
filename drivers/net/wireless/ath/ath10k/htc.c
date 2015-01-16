@@ -118,7 +118,7 @@ int ath10k_htc_send(struct ath10k_htc *htc,
 	int credits = 0;
 	int ret;
 
-	if (htc->ar->state == ATH10K_STATE_WEDGED)
+	if (htc->ar->state == ATH10K_STATE_WEDGED || ar->fw_crashed_since_start)
 		return -ECOMM;
 
 	if (eid >= ATH10K_HTC_EP_COUNT) {

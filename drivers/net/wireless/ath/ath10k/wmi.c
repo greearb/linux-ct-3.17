@@ -3781,6 +3781,11 @@ int ath10k_wmi_vdev_stop(struct ath10k *ar, u32 vdev_id)
 	struct wmi_vdev_stop_cmd *cmd;
 	struct sk_buff *skb;
 
+	if (!ath10k_can_send_fw_msg(ar)) {
+		/* firmware is restarting, vdev is already stopped */
+		return 0;
+	}
+
 	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
 	if (!skb)
 		return -ENOMEM;
@@ -3818,6 +3823,11 @@ int ath10k_wmi_vdev_down(struct ath10k *ar, u32 vdev_id)
 {
 	struct wmi_vdev_down_cmd *cmd;
 	struct sk_buff *skb;
+
+	if (!ath10k_can_send_fw_msg(ar)) {
+		// firmware is restarting, vdev is already down.
+		return 0;
+	}
 
 	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
 	if (!skb)
@@ -3963,6 +3973,11 @@ int ath10k_wmi_peer_create(struct ath10k *ar, u32 vdev_id,
 {
 	struct wmi_peer_create_cmd *cmd;
 	struct sk_buff *skb;
+
+	if (!ath10k_can_send_fw_msg(ar)) {
+		// firmware is restarting, cannot create peers now
+		return -EBUSY;
+	}
 
 	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
 	if (!skb)
@@ -4352,6 +4367,11 @@ int ath10k_wmi_pdev_set_wmm_params(struct ath10k *ar,
 {
 	struct wmi_pdev_set_wmm_params *cmd;
 	struct sk_buff *skb;
+
+	if (!ath10k_can_send_fw_msg(ar)) {
+		// firmware is down, cannot set values now.
+		return -EBUSY;
+	}
 
 	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
 	if (!skb)

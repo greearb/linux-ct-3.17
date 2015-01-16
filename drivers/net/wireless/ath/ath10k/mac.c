@@ -436,6 +436,10 @@ static int ath10k_peer_delete(struct ath10k *ar, u32 vdev_id, const u8 *addr)
 
 	lockdep_assert_held(&ar->conf_mutex);
 
+	if (!ath10k_can_send_fw_msg(ar)) {
+		goto peer_already_gone;
+	}
+
 	ret = ath10k_wmi_peer_delete(ar, vdev_id, addr);
 	if (ret)
 		return ret;
@@ -444,6 +448,7 @@ static int ath10k_peer_delete(struct ath10k *ar, u32 vdev_id, const u8 *addr)
 	if (ret)
 		return ret;
 
+peer_already_gone:
 	spin_lock_bh(&ar->data_lock);
 	ar->num_peers--;
 	spin_unlock_bh(&ar->data_lock);
@@ -805,6 +810,11 @@ static int ath10k_vdev_start_restart(struct ath10k_vif *arvif, bool restart)
 	int ret = 0;
 
 	lockdep_assert_held(&ar->conf_mutex);
+
+	if (!ath10k_can_send_fw_msg(ar)) {
+		// firmware is restarting, cannot start vdev now.
+		return -EBUSY;
+	}
 
 	reinit_completion(&ar->vdev_setup_done);
 
@@ -2329,6 +2339,10 @@ static int ath10k_start_scan(struct ath10k *ar,
 
 	lockdep_assert_held(&ar->conf_mutex);
 
+	if (!ath10k_can_send_fw_msg(ar)) {
+		return -EBUSY;
+	}
+
 	ret = ath10k_wmi_start_scan(ar, arg);
 	if (ret)
 		return ret;
@@ -3525,6 +3539,11 @@ static int ath10k_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
 		return -ENOSPC;
 
 	mutex_lock(&ar->conf_mutex);
+
+	if (!ath10k_can_send_fw_msg(ar)) {
+		// firmware is restarting, cannot set any keys.
+		goto exit;
+	}
 
 	if (sta)
 		peer_addr = sta->addr;

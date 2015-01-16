@@ -915,18 +915,22 @@ static int ath10k_vdev_stop(struct ath10k_vif *arvif)
 		return ret;
 	}
 
-	ret = ath10k_vdev_setup_sync(ar);
-	if (ret) {
-		ath10k_warn(ar, "failed to synchronize setup for vdev %i: %d (stop)\n",
-			    arvif->vdev_id, ret);
-		return ret;
+	if (ath10k_can_send_fw_msg(ar)) {
+		ret = ath10k_vdev_setup_sync(ar);
+		if (ret) {
+			ath10k_warn(ar, "failed to synchronize setup for vdev %i: %d (stop)\n",
+				    arvif->vdev_id, ret);
+			return ret;
+		}
 	}
 
 	WARN_ON(ar->num_started_vdevs == 0);
 
 	if (ar->num_started_vdevs != 0) {
 		ar->num_started_vdevs--;
-		ath10k_recalc_radar_detection(ar);
+		if (ath10k_can_send_fw_msg(ar)) {
+			ath10k_recalc_radar_detection(ar);
+		}
 	}
 
 	return ret;

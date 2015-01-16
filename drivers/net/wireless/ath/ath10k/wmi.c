@@ -25,6 +25,7 @@
 #include "wmi.h"
 #include "mac.h"
 #include "testmode.h"
+#include "hif.h"
 
 static int modparam_override_eeprom_regdomain = -1;
 module_param_named(override_eeprom_regdomain,
@@ -738,6 +739,7 @@ static void ath10k_wmi_op_ep_tx_credits(struct ath10k *ar)
 int ath10k_wmi_cmd_send(struct ath10k *ar, struct sk_buff *skb, u32 cmd_id)
 {
 	int ret = -EOPNOTSUPP;
+	int i;
 
 	might_sleep();
 
@@ -747,13 +749,22 @@ int ath10k_wmi_cmd_send(struct ath10k *ar, struct sk_buff *skb, u32 cmd_id)
 		return ret;
 	}
 
-	wait_event_timeout(ar->wmi.tx_credits_wq, ({
-		/* try to send pending beacons first. they take priority */
-		ath10k_wmi_tx_beacons_nowait(ar);
+	for (i = 0; i<3; i++) {
+		ret = -EAGAIN;
+		wait_event_timeout(ar->wmi.tx_credits_wq, ({
+			/* try to send pending beacons first. they take priority */
+			ath10k_wmi_tx_beacons_nowait(ar);
 
-		ret = ath10k_wmi_cmd_send_nowait(ar, skb, cmd_id);
-		(ret != -EAGAIN);
-	}), 3*HZ);
+			ret = ath10k_wmi_cmd_send_nowait(ar, skb, cmd_id);
+			(ret != -EAGAIN);
+		}), HZ);
+
+		if (ret != -EAGAIN)
+			break;
+
+		/* See if forcing to read the CE rings will kick things loose. */
+		ath10k_hif_force_poll_ce(ar);
+	}
 
 	if (ret)
 		dev_kfree_skb_any(skb);
@@ -2573,6 +2584,11 @@ static void ath10k_wmi_10x_process_rx(struct ath10k *ar, struct sk_buff *skb)
 
 	cmd_hdr = (struct wmi_cmd_hdr *)skb->data;
 	id = MS(__le32_to_cpu(cmd_hdr->cmd_id), WMI_CMD_HDR_CMD_ID);
+
+	if (ar->forcing_ce_service_all) {
+		ath10k_warn(ar, "force-ce-poll found wmi: 0x%x, len: %d\n",
+			    id, skb->len);
+	}
 
 	if (skb_pull(skb, sizeof(struct wmi_cmd_hdr)) == NULL)
 		return;

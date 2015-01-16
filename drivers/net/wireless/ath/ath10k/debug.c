@@ -23,10 +23,12 @@
 
 #include "core.h"
 #include "debug.h"
+#include "hif.h"
 
 /* ms */
 #define ATH10K_DEBUG_HTT_STATS_INTERVAL 1000
 
+#define ATH10K_DEBUG_POLL_CE_INTERVAL 950 /* ms */
 #define ATH10K_DEBUG_NOP_INTERVAL 2000 /* ms */
 
 #define ATH10K_FW_CRASH_DUMP_VERSION 1
@@ -1214,6 +1216,17 @@ static void ath10k_debug_htt_stats_dwork(struct work_struct *work)
 	mutex_unlock(&ar->conf_mutex);
 }
 
+static void ath10k_debug_poll_ce_dwork(struct work_struct *work)
+{
+	/* Seems we may miss IRQs locally as well when firmware gets
+	 * stuck, so force a poll our own CE rings as well.
+	 */
+	struct ath10k *ar = container_of(work, struct ath10k,
+					 debug.poll_ce_dwork.work);
+	ath10k_hif_force_poll_ce(ar);
+}
+
+
 static void ath10k_debug_nop_dwork(struct work_struct *work)
 {
 	struct ath10k *ar = container_of(work, struct ath10k,
@@ -1697,10 +1710,14 @@ int ath10k_debug_register(struct ath10k *ar)
 		return -ENOMEM;
 	}
 
+	INIT_DELAYED_WORK(&ar->debug.poll_ce_dwork, ath10k_debug_poll_ce_dwork);
 	INIT_DELAYED_WORK(&ar->debug.nop_dwork, ath10k_debug_nop_dwork);
 
 	queue_delayed_work(ar->workqueue, &ar->debug.nop_dwork,
 			   msecs_to_jiffies(ATH10K_DEBUG_NOP_INTERVAL));
+
+	queue_delayed_work(ar->workqueue, &ar->debug.poll_ce_dwork,
+			   msecs_to_jiffies(ATH10K_DEBUG_POLL_CE_INTERVAL));
 
 	INIT_DELAYED_WORK(&ar->debug.htt_stats_dwork,
 			  ath10k_debug_htt_stats_dwork);
@@ -1754,6 +1771,7 @@ int ath10k_debug_register(struct ath10k *ar)
 
 void ath10k_debug_unregister(struct ath10k *ar)
 {
+	cancel_delayed_work_sync(&ar->debug.poll_ce_dwork);
 	cancel_delayed_work_sync(&ar->debug.nop_dwork);
 	cancel_delayed_work_sync(&ar->debug.htt_stats_dwork);
 }

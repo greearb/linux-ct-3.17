@@ -776,6 +776,18 @@ void ath10k_ce_per_engine_service_any(struct ath10k *ar)
 }
 
 /*
+ * Try to read each CE ring regardless of whether IRQs are
+ * asserted or not.
+ */
+void ath10k_ce_per_engine_force_service_all(struct ath10k *ar)
+{
+	int ce_id;
+	for (ce_id = 0; ce_id < CE_COUNT; ce_id++) {
+		ath10k_ce_per_engine_service(ar, ce_id);
+	}
+}
+
+/*
  * Adjust interrupts for the copy complete handler.
  * If it's needed for either send or recv, then unmask
  * this interrupt; otherwise, mask it.

@@ -347,6 +347,7 @@ struct ath10k_debug {
 
 	unsigned long htt_stats_mask;
 	struct delayed_work htt_stats_dwork;
+	struct delayed_work poll_ce_dwork;
 	struct delayed_work nop_dwork;
 	struct ath10k_dfs_stats dfs_stats;
 	struct ath_dfs_pool_stats dfs_pool_stats;
@@ -480,6 +481,7 @@ struct ath10k {
 	struct hostdef *hostdef;
 
 	bool p2p;
+	bool forcing_ce_service_all;
 
 	struct {
 		const struct ath10k_hif_ops *ops;

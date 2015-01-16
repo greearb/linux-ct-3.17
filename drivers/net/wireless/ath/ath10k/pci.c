@@ -1180,6 +1180,8 @@ static void ath10k_pci_fw_crashed_dump(struct ath10k *ar)
 {
 	struct ath10k_fw_crash_data *crash_data;
 	char uuid[50];
+	struct ath10k_pci *pci;
+	int i;
 
 	spin_lock_bh(&ar->data_lock);
 
@@ -1206,6 +1208,25 @@ static void ath10k_pci_fw_crashed_dump(struct ath10k *ar)
 
 	spin_unlock_bh(&ar->data_lock);
 
+	/* Print out some info on the CE pipes */
+	pci = ath10k_pci_priv(ar);
+	for (i = 0; i<CE_COUNT_MAX; i++) {
+		if (pci->ce_states[i].src_ring) {
+			ath10k_err(ar, "ce-pipe [%i]  src-ring: write: %d  sw: %d hw: %d\n",
+				   i,
+				   pci->ce_states[i].src_ring->write_index,
+				   pci->ce_states[i].src_ring->sw_index,
+				   pci->ce_states[i].src_ring->hw_index);
+		}
+		if (pci->ce_states[i].dest_ring) {
+			ath10k_err(ar, "ce-pipe [%i]  dest-ring: write: %d  sw: %d hw: %d\n",
+				   i,
+				   pci->ce_states[i].dest_ring->write_index,
+				   pci->ce_states[i].dest_ring->sw_index,
+				   pci->ce_states[i].dest_ring->hw_index);
+		}
+	}
+
 	queue_work(ar->workqueue, &ar->restart_work);
 }
 
@@ -1214,6 +1235,12 @@ static int ath10k_pci_hif_read_target_mem(struct ath10k *ar, u32 targ_addr,
 {
 	ath10k_pci_wake(ar);
 	return ath10k_pci_diag_read_mem(ar, targ_addr, dst, len);
+}
+
+static int ath10k_pci_hif_force_poll_ce(struct ath10k *ar)
+{
+	ath10k_ce_per_engine_force_service_all(ar);
+	return 0;
 }
 
 static void ath10k_pci_hif_send_complete_check(struct ath10k *ar, u8 pipe,
@@ -2157,6 +2184,7 @@ static const struct ath10k_hif_ops ath10k_pci_hif_ops = {
 	.resume			= ath10k_pci_hif_resume,
 #endif
 	.read_target_mem        = ath10k_pci_hif_read_target_mem,
+	.force_poll_ce          = ath10k_pci_hif_force_poll_ce,
 };
 
 static void ath10k_pci_ce_tasklet(unsigned long ptr)

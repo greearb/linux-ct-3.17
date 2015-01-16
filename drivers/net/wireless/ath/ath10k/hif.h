@@ -93,6 +93,8 @@ struct ath10k_hif_ops {
 	/* Read target memory into specified destination.  Used for
          * debugging currently. */
         int (*read_target_mem)(struct ath10k *ar, u32 targ_addr, void* dst, int len);
+
+        int (*force_poll_ce)(struct ath10k *ar);
 };
 
 static inline int ath10k_hif_tx_sg(struct ath10k *ar, u8 pipe_id,
@@ -135,6 +137,15 @@ static inline int ath10k_hif_read_target_mem(struct ath10k *ar, u32 targ_addr,
 					     void* dst, int len)
 {
 	return ar->hif.ops->read_target_mem(ar, targ_addr, dst, len);
+}
+
+static inline int ath10k_hif_force_poll_ce(struct ath10k *ar)
+{
+	int rv;
+	ar->forcing_ce_service_all = true;
+	rv = ar->hif.ops->force_poll_ce(ar);
+	ar->forcing_ce_service_all = false;
+	return rv;
 }
 
 static inline void ath10k_hif_get_default_pipe(struct ath10k *ar,

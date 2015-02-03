@@ -38,6 +38,9 @@ MODULE_PARM_DESC(nohwcrypt, "Disable hardware rx decrypt feature");
 int ath10k_modparam_target_num_vdevs_ct = DEF_TARGET_10X_NUM_VDEVS_CT;
 module_param_named(num_vdevs_ct, ath10k_modparam_target_num_vdevs_ct, int, 0444);
 MODULE_PARM_DESC(num_vdevs_ct, "Maximum vdevs to request from firmware");
+int ath10k_modparam_target_num_peers_ct = 64;
+module_param_named(num_peers_ct, ath10k_modparam_target_num_peers_ct, int, 0444);
+MODULE_PARM_DESC(num_peers_ct, "Maximum peers to request from firmware");
 
 /**********/
 /* Crypto */
@@ -2674,6 +2677,14 @@ static int ath10k_start(struct ieee80211_hw *hw)
 
 	mutex_lock(&ar->conf_mutex);
 
+	/* Make sure peers are not configured totally incorrectly */
+	if (ath10k_modparam_target_num_peers_ct < DEF_TARGET_10X_NUM_PEERS_CT) {
+		ath10k_warn(ar, "Adjusting num-peers-ct to minimum value: %d, configured value: %d\n",
+			    DEF_TARGET_10X_NUM_PEERS_CT,
+			    ath10k_modparam_target_num_peers_ct);
+		ath10k_modparam_target_num_peers_ct = DEF_TARGET_10X_NUM_PEERS_CT;
+	}
+
 	switch (ar->state) {
 	case ATH10K_STATE_OFF:
 		ar->state = ATH10K_STATE_ON;
@@ -3725,7 +3736,7 @@ static int ath10k_sta_state(struct ieee80211_hw *hw,
 		 * New station addition.
 		 */
 		if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features))
-			max_num_peers = TARGET_10X_NUM_PEERS_CT - 1;
+			max_num_peers = ath10k_modparam_target_num_peers_ct;
 		else if (test_bit(ATH10K_FW_FEATURE_WMI_10X, ar->fw_features))
 			max_num_peers = TARGET_10X_NUM_PEERS_MAX - 1;
 		else

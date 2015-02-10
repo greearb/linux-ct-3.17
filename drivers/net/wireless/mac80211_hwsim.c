@@ -2490,7 +2490,7 @@ static int hwsim_cloned_frame_received_nl(struct sk_buff *skb_2,
 	data2->rx_bytes += skb->len;
 	ieee80211_rx_irqsafe(data2->hw, skb);
 
-	printk(KERN_DEBUG "clone frame was OK.\n");
+	/*printk(KERN_DEBUG "clone frame was OK.\n"); */
 	return 0;
 err:
 	printk(KERN_DEBUG "mac80211_hwsim: error occurred in %s\n", __func__);

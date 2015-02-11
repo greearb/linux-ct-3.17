@@ -339,9 +339,7 @@ struct wiphy *wiphy_new_nm(const struct cfg80211_ops *ops, int sizeof_priv,
 	if (unlikely(rdev->wiphy_idx < 0)) {
 		/* TOOD:  Fix this some day. */
 		/* ugh, wrapped! */
-		atomic_dec(&wiphy_counter);
-		kfree(rdev);
-		return NULL;
+		goto err_exit;
 	}
 
 	/* atomic_inc_return makes it start at 1, make it start at 0 */
@@ -366,7 +364,7 @@ struct wiphy *wiphy_new_nm(const struct cfg80211_ops *ops, int sizeof_priv,
 			 * without leading zeroes. taken == strlen(newname) here
 			 */
 			if (taken == strlen(PHY_NAME) + digits)
-				goto use_default_name;
+				goto err_exit;
 		}
 
 		rtnl_lock();
@@ -375,16 +373,15 @@ struct wiphy *wiphy_new_nm(const struct cfg80211_ops *ops, int sizeof_priv,
 			if (strcmp(requested_name, dev_name(&rdev2->wiphy.dev))
 			    == 0) {
 				rtnl_unlock();
-				goto use_default_name;
+				goto err_exit;
 			}
 
 		result = dev_set_name(&rdev->wiphy.dev, requested_name);
 		rtnl_unlock();
 		if (result)
-			goto use_default_name;
+			goto err_exit;
 	}
 	else {
-use_default_name:
 		dev_set_name(&rdev->wiphy.dev, PHY_NAME "%d", rdev->wiphy_idx);
 	}
 
@@ -420,10 +417,8 @@ use_default_name:
 				   &rdev->wiphy.dev, RFKILL_TYPE_WLAN,
 				   &rdev->rfkill_ops, rdev);
 
-	if (!rdev->rfkill) {
-		kfree(rdev);
-		return NULL;
-	}
+	if (!rdev->rfkill)
+		goto err_exit;
 
 	INIT_WORK(&rdev->rfkill_sync, cfg80211_rfkill_sync_work);
 	INIT_WORK(&rdev->conn_work, cfg80211_conn_work);
@@ -445,6 +440,11 @@ use_default_name:
 	rdev->wiphy.max_num_csa_counters = 1;
 
 	return &rdev->wiphy;
+
+err_exit:
+	atomic_dec(&wiphy_counter);
+	kfree(rdev);
+	return NULL;
 }
 EXPORT_SYMBOL(wiphy_new_nm);
 

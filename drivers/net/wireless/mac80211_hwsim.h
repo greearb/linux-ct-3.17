@@ -68,6 +68,11 @@ enum hwsim_tx_control_flags {
  * @HWSIM_CMD_CREATE_RADIO: create a new radio with the given parameters,
  *	returns the radio ID (>= 0) or negative on errors
  * @HWSIM_CMD_DESTROY_RADIO: destroy a radio
+ * @HWSIM_CMD_NOTIFY: notify user-space about driver changes.  This is
+ * designed to help the user-space app better emulate radio hardware.
+ * This command uses:
+ *      %HWSIM_ATTR_FREQ # Notify current operating center frequency.
+ *      %HWSIM_ATTR_ADDR_TRANSMITTER # ID which radio we are notifying about.
  * @__HWSIM_CMD_MAX: enum limit
  */
 enum {
@@ -77,6 +82,7 @@ enum {
 	HWSIM_CMD_TX_INFO_FRAME,
 	HWSIM_CMD_CREATE_RADIO,
 	HWSIM_CMD_DESTROY_RADIO,
+	HWSIM_CMD_NOTIFY,
 	__HWSIM_CMD_MAX,
 };
 #define HWSIM_CMD_MAX (_HWSIM_CMD_MAX - 1)

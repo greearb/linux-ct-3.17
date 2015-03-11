@@ -975,14 +975,10 @@ static void mac80211_hwsim_tx_frame_nl(struct ieee80211_hw *hw,
 	if (genlmsg_unicast(&init_net, skb, dst_portid))
 		goto err_free_txskb;
 
+	/* Enqueue the packet */
+	skb_queue_tail(&data->pending, my_skb);
 	data->tx_pkts++;
 	data->tx_bytes += my_skb->len;
-
-	/* Enqueue the packet if we are expecting a tx-status response */
-	if (info->flags & IEEE80211_TX_CTL_REQ_TX_STATUS)
-		skb_queue_tail(&data->pending, my_skb);
-	else
-		ieee80211_free_txskb(hw, my_skb);
 	return;
 
 nla_put_failure:

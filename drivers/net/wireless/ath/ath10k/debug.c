@@ -1526,7 +1526,11 @@ static const char ath10k_gstrings_stats[][ETH_GSTRING_LEN] = {
 	"rx_pkts_nic",
 	"rx_bytes_nic",
 	"d_noise_floor",
-	"d_cycle_count",
+	"d_cycle_count", /* this is duty cycle counter, basically channel-time. 88MHz clock */
+	"d_tx_cycle_count", /* tx cycle count */
+	"d_rx_cycle_count", /* rx cycle count */
+	"d_busy_count", /* Total channel busy time cycles (called 'clear' by firmware) */
+	"d_flags", /* 0x1:  hw has shifted cycle-count wrap, see ath10k_hw_fill_survey_time */
 	"d_phy_error",
 	"d_rts_bad",
 	"d_rts_good",
@@ -1595,6 +1599,7 @@ void ath10k_get_et_stats(struct ieee80211_hw *hw,
 	struct ath10k *ar = hw->priv;
 	int i = 0;
 	struct ath10k_target_stats *fw_stats;
+	u64 d_flags = 0;
 
 	fw_stats = &ar->debug.target_stats;
 
@@ -1603,12 +1608,19 @@ void ath10k_get_et_stats(struct ieee80211_hw *hw,
 	if (ar->state == ATH10K_STATE_ON)
 		ath10k_refresh_peer_stats(ar);
 
+	if (ar->hw_params.has_shifted_cc_wraparound)
+		d_flags |= 0x1;
+
 	data[i++] = fw_stats->hw_reaped; /* ppdu reaped */
 	data[i++] = 0; /* tx bytes */
 	data[i++] = fw_stats->htt_mpdus;
 	data[i++] = 0; /* rx bytes */
 	data[i++] = fw_stats->ch_noise_floor;
 	data[i++] = fw_stats->cycle_count;
+	data[i++] = fw_stats->tx_frame_count;
+	data[i++] = fw_stats->rx_frame_count;
+	data[i++] = fw_stats->rx_clear_count; /* yes, this appears to actually be 'busy' count */
+	data[i++] = d_flags; /* give user-space a chance to decode cycle counters */
 	data[i++] = fw_stats->phy_err_count;
 	data[i++] = fw_stats->rts_bad;
 	data[i++] = fw_stats->rts_good;

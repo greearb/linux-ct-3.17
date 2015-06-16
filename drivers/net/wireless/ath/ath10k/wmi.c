@@ -3190,7 +3190,7 @@ static int ath10k_wmi_10x_cmd_init(struct ath10k *ar)
 		config.roam_offload_max_vdev = 0; /* disable roaming */
 		config.roam_offload_max_ap_profiles = 0; /* disable roaming */
 		config.num_peer_keys = __cpu_to_le32(TARGET_10X_NUM_PEER_KEYS_CT);
-		config.num_msdu_desc = __cpu_to_le32(TARGET_10X_NUM_MSDU_DESC_CT);
+		config.num_msdu_desc = __cpu_to_le32(ath10k_modparam_target_num_msdu_desc_ct);
 		/* Disable beacon-miss logic, old code had it at 2 vdevs, which is not
 		 * nearly enough for us anyway..
 		 */

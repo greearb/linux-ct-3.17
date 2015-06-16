@@ -1085,6 +1085,7 @@ static int ath10k_core_probe_fw(struct ath10k *ar)
 	if (ret) {
 		ath10k_err(ar, "could not init core (%d)\n", ret);
 		ath10k_core_free_firmware_files(ar);
+
 		ath10k_hif_power_down(ar);
 		mutex_unlock(&ar->conf_mutex);
 		return ret;

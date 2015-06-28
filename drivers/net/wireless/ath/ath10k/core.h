@@ -657,6 +657,8 @@ struct ath10k {
 		bool utf_monitor;
 	} testmode;
 
+	u8 ath10k_thresh62_ext; /* be sure to flush this to firmware after resets */
+
 	/* must be last */
 	u8 drv_priv[0] __aligned(sizeof(void *));
 };

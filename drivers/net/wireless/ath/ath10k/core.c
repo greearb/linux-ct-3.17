@@ -972,6 +972,14 @@ int ath10k_core_start(struct ath10k *ar, enum ath10k_firmware_mode mode)
 	if (status)
 		goto err_hif_stop;
 
+	/* Apply user-supplied configuration changes. */
+	if (ar->ath10k_thresh62_ext) {
+		/* Don't worry about failures..not much we can do, and not worth failing init even
+		 * if this fails.
+		 */
+		ath10k_wmi_pdev_set_special(ar, SET_SPECIAL_ID_THRESH62_EXT, ar->ath10k_thresh62_ext);
+	}
+
 	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features)) {
 		if (ath10k_modparam_target_num_vdevs_ct >= 64)
 			ar->free_vdev_map = 0xFFFFFFFFFFFFFFFFLL;

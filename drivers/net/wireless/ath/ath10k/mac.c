@@ -2072,7 +2072,7 @@ static int ath10k_tx_htt(struct ath10k *ar, struct sk_buff *skb)
 		goto exit;
 	}
 
-	if (ar->htt.target_version_major >= 3) {
+	if (ar->all_pkts_htt) {
 		/* Since HTT 3.0 there is no separate mgmt tx command */
 		ret = ath10k_htt_tx(&ar->htt, skb);
 		goto exit;

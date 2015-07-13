@@ -668,7 +668,7 @@ int ath10k_wmi_pdev_set_special(struct ath10k *ar, u32 id, u32 val)
 	if (!skb)
 		return -ENOMEM;
 
-	cmd = (struct wmi_pdev_set_special *)skb->data;
+	cmd = (struct wmi_pdev_set_special_cmd *)skb->data;
 	memset(cmd, 0, sizeof(*cmd));
 	
 	cmd->id = __cpu_to_le32(id);

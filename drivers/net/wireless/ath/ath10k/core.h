@@ -486,6 +486,7 @@ struct ath10k {
 
 	bool p2p;
 	bool forcing_ce_service_all;
+	bool all_pkts_htt; /* target has no separate mgmt tx command? */
 
 	struct {
 		const struct ath10k_hif_ops *ops;

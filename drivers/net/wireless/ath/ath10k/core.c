@@ -568,6 +568,7 @@ static int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name)
 			ath10k_dbg_dump(ar, ATH10K_DBG_BOOT, "features", "",
 					ar->fw_features,
 					sizeof(ar->fw_features));
+
 			break;
 		case ATH10K_FW_IE_FW_IMAGE:
 			ath10k_dbg(ar, ATH10K_DBG_BOOT,
@@ -587,7 +588,8 @@ static int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name)
 			ar->otp_len = ie_len;
 
 			break;
-		case ATH10K_FW_IE_BSS_INFO:
+		case ATH10K_FW_IE_BSS_INFO_OLD:
+		case ATH10K_FW_IE_BSS_INFO_CT:
 			if (ie_len < sizeof(*bss)) {
 				ath10k_warn(ar, "invalid ie len for bss-info (%zd)\n",
 					    ie_len);
@@ -618,7 +620,6 @@ static int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name)
 					    ar->fw.rom_bss_len);
 				ar->fw.rom_bss_len = 0;
 			}
-
 			break;
 		default:
 			ath10k_warn(ar, "Unknown FW IE: %u\n",
@@ -645,6 +646,18 @@ static int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name)
 		ath10k_err(ar, "feature bits corrupted: 10.2 feature requires 10.x feature to be set as well");
 		ret = -EINVAL;
 		goto err;
+	}
+
+	/* Only CT firmware has BSS sutff, so we can use this to fix up
+	 * flags for backwards and fowards compat with older/newer CT firmware.
+	 * (upstream stole some bits it was using)
+	 */
+	if (ar->fw.rom_bss_addr) {
+		if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT_OLD, ar->fw_features))
+			__set_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features);
+
+		if (test_bit(ATH10K_FW_FEATURE_CT_RXSWCRYPT_OLD, ar->fw_features))
+			__set_bit(ATH10K_FW_FEATURE_CT_RXSWCRYPT, ar->fw_features);
 	}
 
 	/* now fetch the board file */

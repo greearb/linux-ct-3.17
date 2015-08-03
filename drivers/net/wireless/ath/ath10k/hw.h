@@ -56,7 +56,8 @@ enum ath10k_fw_ie_type {
 	ATH10K_FW_IE_FEATURES = 2,
 	ATH10K_FW_IE_FW_IMAGE = 3,
 	ATH10K_FW_IE_OTP_IMAGE = 4,
-	ATH10K_FW_IE_BSS_INFO = 5,
+	ATH10K_FW_IE_BSS_INFO_OLD = 5, /* for older CT firmware... */
+	ATH10K_FW_IE_BSS_INFO_CT = 30, /* Used by newer CT firmware */
 };
 
 /* Known pecularities:

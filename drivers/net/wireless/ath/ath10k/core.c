@@ -496,7 +496,10 @@ static int ath10k_core_fetch_firmware_api_n(struct ath10k *ar, const char *name)
 	}
 
 	if (memcmp(data, ATH10K_FIRMWARE_MAGIC, magic_len) != 0) {
-		ath10k_err(ar, "invalid firmware magic\n");
+		unsigned char *ds = (char*)(data);
+		ath10k_err(ar, "invalid firmware magic: len: %d %s (%02hx %02hx %02hx %02hx %02hx %02hx %02hx %02hx)\n",
+			   (int)magic_len, (char*)(ds), ds[0], ds[1], ds[2], ds[3],
+			   ds[4], ds[5], ds[6], ds[7]);
 		ret = -EINVAL;
 		goto err;
 	}
@@ -986,26 +989,33 @@ int ath10k_core_start(struct ath10k *ar, enum ath10k_firmware_mode mode)
 	if (status)
 		goto err_hif_stop;
 
-	/* Apply user-supplied configuration changes. */
-	/* Don't worry about failures..not much we can do, and not worth failing init even
-	 * if this fails.
-	 */
-	for (band = 0; band < 2; band++) {
-		u32 val;
-		for (i = 0; i<MIN_CCA_PWR_COUNT; i++) {
-			val = (band << 24) | (i << 16) | ar->eeprom_overrides.bands[band].minCcaPwrCT[i];
+	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features)) {
+		/* Apply user-supplied configuration changes. */
+		/* Don't worry about failures..not much we can do, and not worth failing init even
+		 * if this fails.
+		 */
+		for (band = 0; band < 2; band++) {
+			u32 val;
+			for (i = 0; i<MIN_CCA_PWR_COUNT; i++) {
+				val = (band << 24) | (i << 16) | ar->eeprom_overrides.bands[band].minCcaPwrCT[i];
+				ath10k_wmi_pdev_set_special(ar, SET_SPECIAL_ID_NOISE_FLR_THRESH, val);
+			}
+
+			i = 4; /* enable-minccapwr-thresh type */
+			val = (band << 24) | (i << 16) | ar->eeprom_overrides.bands[band].enable_minccapwr_thresh;
 			ath10k_wmi_pdev_set_special(ar, SET_SPECIAL_ID_NOISE_FLR_THRESH, val);
 		}
 
-		i = 4; /* enable-minccapwr-thresh type */
-		val = (band << 24) | (i << 16) | ar->eeprom_overrides.bands[band].enable_minccapwr_thresh;
-		ath10k_wmi_pdev_set_special(ar, SET_SPECIAL_ID_NOISE_FLR_THRESH, val);
-	}
+		/* TODO:  Should probably be per-band?? */
+		if (ar->eeprom_overrides.thresh62_ext) {
+			ath10k_wmi_pdev_set_special(ar, SET_SPECIAL_ID_THRESH62_EXT,
+						    ar->eeprom_overrides.thresh62_ext);
+		}
 
-	/* TODO:  Should probably be per-band?? */
-	if (ar->eeprom_overrides.thresh62_ext) {
-		ath10k_wmi_pdev_set_special(ar, SET_SPECIAL_ID_THRESH62_EXT,
-					    ar->eeprom_overrides.thresh62_ext);
+		if (ar->eeprom_overrides.allow_ibss_amsdu) {
+			ath10k_wmi_pdev_set_special(ar, SET_SPECIAL_ID_IBSS_AMSDU_OK,
+						    ar->eeprom_overrides.allow_ibss_amsdu);
+		}
 	}
 
 	if (test_bit(ATH10K_FW_FEATURE_WMI_10X_CT, ar->fw_features)) {

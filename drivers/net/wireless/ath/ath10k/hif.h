@@ -80,6 +80,9 @@ struct ath10k_hif_ops {
 
 	u16 (*get_free_queue_number)(struct ath10k *ar, u8 pipe_id);
 
+	/* We think firmware has crashed, attempt to gather logs and recover. */
+	void (*fw_crashed_dump)(struct ath10k *ar);
+
 	/* Power up the device and enter BMI transfer mode for FW download */
 	int (*power_up)(struct ath10k *ar);
 
@@ -196,6 +199,17 @@ static inline int ath10k_hif_resume(struct ath10k *ar)
 		return -EOPNOTSUPP;
 
 	return ar->hif.ops->resume(ar);
+}
+
+static inline int ath10k_hif_fw_crashed_dump(struct ath10k *ar)
+{
+	if (!ar->hif.ops->fw_crashed_dump) {
+		/* ath10k_warn(ar, "hif fw_crashed_dump\n"); */
+		return -EINVAL;
+	}
+
+	ar->hif.ops->fw_crashed_dump(ar);
+	return 0;
 }
 
 #endif /* _HIF_H_ */

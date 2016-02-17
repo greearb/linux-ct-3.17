@@ -5087,6 +5087,7 @@ int ath10k_mac_register(struct ath10k *ar)
 	ar->ath10k_if_comb[0].limits[0].types =
 		BIT(NL80211_IFTYPE_STATION)
 		| BIT(NL80211_IFTYPE_P2P_CLIENT);
+	ar->ath10k_if_comb[0].limits[0].max = 7;
 
 	ar->ath10k_if_comb[0].limits[1].types = BIT(NL80211_IFTYPE_P2P_GO);
 	ar->ath10k_if_comb[0].limits[1].max = 3;

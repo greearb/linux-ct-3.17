@@ -1193,7 +1193,7 @@ static bool ath10k_htt_rx_amsdu_allowed(struct ath10k_htt *htt,
 	}
 
 	if (!channel_set) {
-		ath10k_warn(ar, "no channel configured; ignoring frame!\n");
+		ath10k_dbg(ar, ATH10K_DBG_HTT, "no channel configured; ignoring frame!\n");
 		return false;
 	}
 
@@ -1232,7 +1232,7 @@ static bool ath10k_htt_rx_amsdu_allowed(struct ath10k_htt *htt,
 			if (htt->ar->use_swcrypt)
 				goto continue_on;
 			if (net_ratelimit())
-				ath10k_warn(ar, "htt rx:  status ERR_FCS\n");
+				ath10k_dbg(ar, ATH10K_DBG_HTT, "htt rx:  status ERR_FCS\n");
 		} else {
 			if (net_ratelimit())
 				ath10k_warn(ar, "htt rx ignoring frame w/ status %d\n",

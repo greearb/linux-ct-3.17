@@ -1320,6 +1320,7 @@ static void ath10k_debug_htt_stats_dwork(struct work_struct *work)
 	mutex_unlock(&ar->conf_mutex);
 }
 
+#if 0
 static void ath10k_debug_poll_ce_dwork(struct work_struct *work)
 {
 	/* Seems we may miss IRQs locally as well when firmware gets
@@ -1329,7 +1330,7 @@ static void ath10k_debug_poll_ce_dwork(struct work_struct *work)
 					 debug.poll_ce_dwork.work);
 	ath10k_hif_force_poll_ce(ar);
 }
-
+#endif
 
 static void ath10k_debug_nop_dwork(struct work_struct *work)
 {
@@ -1968,14 +1969,14 @@ int ath10k_debug_register(struct ath10k *ar)
 		return -ENOMEM;
 	}
 
-	INIT_DELAYED_WORK(&ar->debug.poll_ce_dwork, ath10k_debug_poll_ce_dwork);
+	//INIT_DELAYED_WORK(&ar->debug.poll_ce_dwork, ath10k_debug_poll_ce_dwork);
 	INIT_DELAYED_WORK(&ar->debug.nop_dwork, ath10k_debug_nop_dwork);
 
 	queue_delayed_work(ar->workqueue, &ar->debug.nop_dwork,
 			   msecs_to_jiffies(ATH10K_DEBUG_NOP_INTERVAL));
 
-	queue_delayed_work(ar->workqueue, &ar->debug.poll_ce_dwork,
-			   msecs_to_jiffies(ATH10K_DEBUG_POLL_CE_INTERVAL));
+	//queue_delayed_work(ar->workqueue, &ar->debug.poll_ce_dwork,
+	//		   msecs_to_jiffies(ATH10K_DEBUG_POLL_CE_INTERVAL));
 
 	INIT_DELAYED_WORK(&ar->debug.htt_stats_dwork,
 			  ath10k_debug_htt_stats_dwork);
@@ -2038,7 +2039,7 @@ int ath10k_debug_register(struct ath10k *ar)
 
 void ath10k_debug_unregister(struct ath10k *ar)
 {
-	cancel_delayed_work_sync(&ar->debug.poll_ce_dwork);
+	//cancel_delayed_work_sync(&ar->debug.poll_ce_dwork);
 	cancel_delayed_work_sync(&ar->debug.nop_dwork);
 	cancel_delayed_work_sync(&ar->debug.htt_stats_dwork);
 }

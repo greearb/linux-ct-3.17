@@ -1221,7 +1221,7 @@ static bool ath10k_htt_rx_amsdu_allowed(struct ath10k_htt *htt,
 			if (htt->ar->use_swcrypt)
 				goto continue_on;
 			if (net_ratelimit())
-				ath10k_warn(ar, "htt rx: status DUP\n");
+				ath10k_dbg(ar, ATH10K_DBG_HTT, "htt rx: status DUP\n");
 		} else if (status == HTT_RX_IND_MPDU_STATUS_ERR_FCS) {
 			/* This is seen when using sw-rx-crypt
 			 * (CT firmware only, other firmware

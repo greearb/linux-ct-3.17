@@ -795,6 +795,23 @@ int ath10k_wmi_cmd_send(struct ath10k *ar, struct sk_buff *skb, u32 cmd_id)
 	if (ret)
 		dev_kfree_skb_any(skb);
 
+	if (ret == -EAGAIN) {
+		ar->wmi_timeouts++;
+		/* htt-mgt should never timeout, and even non-htt mgt shouldn't take
+		 * more than 6 seconds I think. --Ben
+		 */
+		if (ar->all_pkts_htt || (ar->wmi_timeouts >= 2)) {
+			/* Firmware is not responding after 3 seconds, might as well try to kill it. */
+			ath10k_err(ar, "Cannot communicate with firmware (%d), attempting to fake crash and restart firmware.\n",
+				   ar->wmi_timeouts);
+			ath10k_hif_fw_crashed_dump(ar);
+		}
+	}
+	else {
+		ar->wmi_timeouts = 0;
+	}
+
+
 	return ret;
 }
 

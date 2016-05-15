@@ -4827,6 +4827,13 @@ struct wmi_pdev_set_special_cmd {
 #define SET_SPECIAL_ID_MAX_TXPOWER      6 /* Set the maximum allowed tx-power.  This over-rules any other
                                            * power settings.
                                            */
+#define SET_SPECIAL_ID_RC_MAX_PER_THR   7 /* Set the 'g_rc_rate_max_per_thr' value.  Default is 50.  Higher may make
+                                           * the rate-ctrl logic work better in crouded RF environments.  Tune with
+                                           * care.  I'm not sure than anything above 100 is meaningful.
+                                           */
+#define SET_SPECIAL_ID_STA_TXBW_MASK    8 /* Set the bandwidths that station vdevs can transmit on:
+					   * 0:  all, 0x1: 20Mhz, 0x2 40Mhz, 0x4 80Mhz
+                                           */
 #define CT_CCA_TYPE_MIN0 0
 #define CT_CCA_TYPE_MIN1 1
 #define CT_CCA_TYPE_MIN2 2

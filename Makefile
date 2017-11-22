@@ -22,6 +22,9 @@ LC_COLLATE=C
 LC_NUMERIC=C
 export LC_COLLATE LC_NUMERIC
 
+GCC_COLORS=
+export GCC_COLORS
+
 # Avoid interference with shell env settings
 unexport GREP_OPTIONS
 
